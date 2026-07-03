@@ -82,7 +82,7 @@ Principios detrás de esta estructura: **routers** sólo orquestan (validan entr
 ## Tests
 
 - Usa `pytest` + `pytest-asyncio` (o el soporte async nativo si la versión lo permite) + `httpx.AsyncClient`/`ASGITransport` para tests de integración contra la app real.
-- Separa **unit tests** (servicios y lógica de negocio, con repositorios mockeados o in-memory) de **integration tests** (endpoints reales contra una base de datos de test, idealmente vía contenedor efímero o `testcontainers`).
+- Separa **unit tests** (servicios y lógica de negocio, con repositorios mockeados o in-memory) de **integration tests** (endpoints reales contra una base de datos de test dedicada en la instancia local de PostgreSQL — esquema o base de datos separada exclusiva para tests, nunca Docker en esta fase del proyecto).
 - Usa fixtures en `conftest.py` para: engine/sesión de test, cliente HTTP, datos base (factories), y limpieza de estado entre tests (transacción por test con rollback, no compartir estado).
 - Toda nueva ruta, servicio o regla de negocio no trivial debe llevar tests que cubran el camino feliz y al menos un caso de error/borde relevante.
 - No generes tests triviales que sólo repitan la implementación sin valor (p. ej. testear que un getter devuelve lo que se le asignó) — prioriza tests que verifiquen comportamiento y reglas de negocio.
@@ -116,3 +116,20 @@ Independientemente del tamaño de la petición, todo código que generes debe cu
 - Formateado de forma consistente (asume `ruff`/`black` como estándar salvo que el proyecto indique otra herramienta).
 
 Si una petición del usuario es ambigua sobre dónde debe vivir cierta lógica, pregunta o decide siguiendo la estructura de referencia — pero nunca "por ahora lo pongo aquí y ya se reorganiza después".
+
+## Desarrollo local
+
+El backend debe ejecutarse utilizando:
+
+- Python 3.12+
+- entorno virtual (`.venv`)
+- Uvicorn
+
+Debe generar automáticamente:
+
+- `requirements.txt`
+- `.env.example`
+- `setup_dev.ps1`
+- `run_backend.ps1`
+
+Nunca asumir Docker para ejecutar el backend.

@@ -96,3 +96,16 @@ Rendimiento puro, elegancia estética del código o el uso de la última tecnolo
 ```
 
 Sólo tras la aprobación, pasa a implementar siguiendo fielmente el diseño acordado. Si durante la implementación descubres que el diseño no encaja con la realidad del código, detente y vuelve a proponer el ajuste — no lo decidas unilateralmente sobre la marcha.
+
+## Entorno de desarrollo
+
+Durante el desarrollo inicial del proyecto:
+
+- No asumir el uso de Docker.
+- El proyecto debe poder ejecutarse completamente en un entorno local de Windows.
+- Backend mediante FastAPI.
+- Frontend mediante React + Vite.
+- Base de datos PostgreSQL instalada localmente.
+- Toda la configuración debe provenir de variables de entorno.
+
+Docker podrá incorporarse en una fase posterior para despliegue, sin afectar la arquitectura.

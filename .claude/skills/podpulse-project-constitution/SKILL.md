@@ -23,6 +23,20 @@ El stack de PodPulse **no se elige tarea a tarea, ya está decidido**:
 
 No propongas ni introduzcas un framework, librería estructural o motor de base de datos alternativo "porque encaja mejor" para una tarea puntual — si genuinamente crees que el stack fijo es inadecuado para algo concreto, exponlo como riesgo/alternativa y espera aprobación explícita del usuario antes de desviarte (ver "Nunca cambiar sin justificar", abajo).
 
+## Entorno de desarrollo
+
+El proyecto utilizará inicialmente un entorno local.
+
+- **Backend**: FastAPI
+- **Frontend**: React + Vite
+- **Base de datos**: PostgreSQL
+
+No utilizar Docker durante el desarrollo inicial.
+
+Toda la arquitectura debe mantenerse compatible con Docker para un futuro despliegue.
+
+El código nunca debe depender exclusivamente de Docker para ejecutarse.
+
 ## Ingesta de datos: CSV y Excel
 
 - Los archivos **CSV y Excel se cargan manualmente** — no asumas ni diseñes ingestas automáticas, conectores en vivo, sincronización programada ni integraciones directas con Power BI/fuentes externas salvo que el usuario lo pida explícitamente como un cambio de alcance.

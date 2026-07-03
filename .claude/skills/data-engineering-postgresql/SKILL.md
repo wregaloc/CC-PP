@@ -81,3 +81,10 @@ Esta regla domina sobre cualquier otra decisión de diseño:
 ```
 
 Si la tarea es una corrección o carga simple sobre datos ya validados, puedes omitir el formato extendido — pero la regla de nunca perder información aplica siempre, sin excepción.
+
+## Entorno de ejecución
+
+- La aplicación utilizará PostgreSQL instalado localmente.
+- Toda conexión a la base de datos debe realizarse mediante variables de entorno.
+- Nunca asumir contenedores Docker.
+- Generar instrucciones de instalación local para PostgreSQL cuando la tarea lo requiera.

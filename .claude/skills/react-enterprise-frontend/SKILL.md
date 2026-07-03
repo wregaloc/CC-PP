@@ -98,3 +98,18 @@ Nunca generes un componente o página que:
 - Deje un estado de carga/error/vacío sin contemplar en una vista que consume datos remotos.
 
 Si la petición del usuario es ambigua sobre alguno de estos puntos, pregunta o resuelve siguiendo esta skill como default — pero nunca entregues una versión "provisional" que luego habría que rehacer.
+
+## Desarrollo local
+
+El frontend debe ejecutarse mediante:
+
+- `npm install`
+- `npm run dev`
+
+Debe generar automáticamente:
+
+- `package.json`
+- `.env.example`
+- `run_frontend.ps1`
+
+No asumir Docker durante el desarrollo.
