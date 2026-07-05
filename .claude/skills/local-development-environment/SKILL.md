@@ -28,9 +28,9 @@ Eres el responsable de que **cualquier persona pueda levantar PodPulse en una m�
 
 ## Base de datos
 
-- PostgreSQL **instalado localmente** (ver [[data-engineering-postgresql]] para instrucciones de instalación local cuando se necesiten).
+- **Supabase (PostgreSQL gestionado)** — base de datos oficial de desarrollo de PodPulse, no una instalación local (decisión permanente, ver [[podpulse-project-constitution]]). No generes ni sugieras pasos de instalación local de PostgreSQL para este proyecto.
 - Toda conexión (host, puerto, usuario, contraseña, nombre de base de datos) se resuelve **exclusivamente vía variables de entorno** — nunca hardcodees una cadena de conexión en el código, en un script, ni en un archivo de configuración versionado.
-- **Nunca usar credenciales hardcodeadas**, ni siquiera "temporalmente para probar" — ni en backend, ni en scripts `.ps1`, ni en ejemplos de documentación (usa placeholders claros tipo `<tu_password>` en la documentación, nunca una contraseña real de ejemplo que alguien pueda copiar y dejar en producción).
+- **Nunca usar credenciales hardcodeadas**, ni siquiera "temporalmente para probar" — ni en backend, ni en scripts `.ps1`, ni en ejemplos de documentación (usa placeholders claros tipo `<tu_password>` en la documentación, nunca una contraseña real de ejemplo que alguien pueda copiar y dejar en producción). Ver `database/README.md` para el procedimiento de configuración de Supabase.
 
 ## Configuración
 

@@ -1,0 +1,127 @@
+"""Orquesta las consultas de dashboard_repository y las mapea a los schemas de
+respuesta — ver [[fastapi-enterprise-backend]] (routers solo orquestan, la
+lógica de agregación vive en el repository, no aquí ni en el router)."""
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.dependencies.dashboard_filters import DateRangeParams
+from app.models.enums import ProgramType
+from app.repositories import dashboard_repository
+from app.schemas.dashboard import (
+    AuspicioOut,
+    CanalLiveStatsResponse,
+    CanalProgramaItem,
+    CanalRankingItem,
+    EvolutivoPoint,
+    Granularidad,
+    KeywordOut,
+    KpisResponse,
+    MetricaSecundaria,
+    PeriodoDisponibleResponse,
+    ProgramaRankingItem,
+    SentimentKpisResponse,
+    SentimientoEvolutivoPoint,
+    SentimientoFiltro,
+)
+
+
+async def get_kpis(
+    session: AsyncSession, filters: DateRangeParams, programa: str | None, canal: str | None
+) -> KpisResponse:
+    data = await dashboard_repository.get_kpis(session, filters, programa, canal)
+    return KpisResponse(**data)
+
+
+async def get_sentiment_kpis(
+    session: AsyncSession, filters: DateRangeParams, programa: str | None
+) -> SentimentKpisResponse:
+    data = await dashboard_repository.get_sentiment_kpis(session, filters, programa)
+    return SentimentKpisResponse(**data)
+
+
+async def get_auspicios(
+    session: AsyncSession, programa: str | None, mes: int | None
+) -> list[AuspicioOut]:
+    nombres = await dashboard_repository.get_auspicios(session, programa, mes)
+    return [AuspicioOut(auspiciador=nombre) for nombre in nombres]
+
+
+async def get_evolutivo(
+    session: AsyncSession,
+    filters: DateRangeParams,
+    granularidad: Granularidad,
+    metrica_secundaria: MetricaSecundaria,
+    programa: str | None,
+    canal: str | None,
+) -> list[EvolutivoPoint]:
+    points = await dashboard_repository.get_evolutivo(
+        session, filters, granularidad, metrica_secundaria, programa, canal
+    )
+    return [EvolutivoPoint(**point) for point in points]
+
+
+async def get_ranking_programas(
+    session: AsyncSession,
+    filters: DateRangeParams,
+    canal: str | None,
+    tipo: ProgramType | None,
+    limit: int,
+) -> list[ProgramaRankingItem]:
+    items = await dashboard_repository.get_ranking_programas(session, filters, canal, tipo, limit)
+    return [ProgramaRankingItem(**item) for item in items]
+
+
+async def get_ranking_canales(
+    session: AsyncSession, filters: DateRangeParams, limit: int
+) -> list[CanalRankingItem]:
+    items = await dashboard_repository.get_ranking_canales(session, filters, limit)
+    return [CanalRankingItem(**item) for item in items]
+
+
+async def get_canal_programas(
+    session: AsyncSession, canal: str, filters: DateRangeParams, categoria: str | None
+) -> list[CanalProgramaItem]:
+    items = await dashboard_repository.get_canal_programas(session, canal, filters, categoria)
+    return [CanalProgramaItem(**item) for item in items]
+
+
+async def get_canal_live_stats(
+    session: AsyncSession, canal: str, filters: DateRangeParams
+) -> CanalLiveStatsResponse:
+    data = await dashboard_repository.get_canal_live_stats(session, canal, filters)
+    return CanalLiveStatsResponse(**data)
+
+
+async def get_keywords(
+    session: AsyncSession,
+    programa: str | None,
+    mes: int | None,
+    sentimiento: SentimientoFiltro,
+    limit: int,
+) -> list[KeywordOut]:
+    items = await dashboard_repository.get_keywords(session, programa, mes, sentimiento, limit)
+    return [KeywordOut(**item) for item in items]
+
+
+async def get_sentimiento_evolutivo(
+    session: AsyncSession, programa: str | None, filters: DateRangeParams
+) -> list[SentimientoEvolutivoPoint]:
+    points = await dashboard_repository.get_sentimiento_evolutivo(session, programa, filters)
+    return [SentimientoEvolutivoPoint(**point) for point in points]
+
+
+async def get_filter_programas(session: AsyncSession) -> list[str]:
+    return await dashboard_repository.get_filter_programas(session)
+
+
+async def get_filter_canales(session: AsyncSession) -> list[str]:
+    return await dashboard_repository.get_filter_canales(session)
+
+
+async def get_filter_categorias(session: AsyncSession) -> list[str]:
+    return await dashboard_repository.get_filter_categorias(session)
+
+
+async def get_filter_periodos(session: AsyncSession) -> PeriodoDisponibleResponse:
+    data = await dashboard_repository.get_filter_periodos(session)
+    return PeriodoDisponibleResponse(**data)

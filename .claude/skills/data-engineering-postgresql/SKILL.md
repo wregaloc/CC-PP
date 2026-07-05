@@ -84,7 +84,7 @@ Si la tarea es una corrección o carga simple sobre datos ya validados, puedes o
 
 ## Entorno de ejecución
 
-- La aplicación utilizará PostgreSQL instalado localmente.
-- Toda conexión a la base de datos debe realizarse mediante variables de entorno.
+- Por defecto, esta skill asume PostgreSQL instalado localmente — pero **en PodPulse la base de datos oficial es Supabase (Postgres gestionado)**, nunca una instalación local (ver [[podpulse-project-constitution]], sección "Entorno de desarrollo"). Ante cualquier tarea dentro de este repositorio, esa decisión del proyecto tiene prioridad sobre la guía genérica de abajo.
+- Toda conexión a la base de datos debe realizarse mediante variables de entorno — nunca credenciales hardcodeadas, ni siquiera en scripts o tests.
 - Nunca asumir contenedores Docker.
-- Generar instrucciones de instalación local para PostgreSQL cuando la tarea lo requiera.
+- No generar instrucciones de instalación local de PostgreSQL para PodPulse — si una tarea parece requerirlas, es señal de que se está asumiendo un entorno incorrecto; usar Supabase (ver `database/README.md`).

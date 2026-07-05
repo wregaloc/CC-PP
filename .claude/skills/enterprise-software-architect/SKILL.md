@@ -102,10 +102,10 @@ Sólo tras la aprobación, pasa a implementar siguiendo fielmente el diseño aco
 Durante el desarrollo inicial del proyecto:
 
 - No asumir el uso de Docker.
-- El proyecto debe poder ejecutarse completamente en un entorno local de Windows.
+- El proyecto debe poder ejecutarse completamente en un entorno local de Windows (backend y frontend).
 - Backend mediante FastAPI.
 - Frontend mediante React + Vite.
-- Base de datos PostgreSQL instalada localmente.
+- Base de datos PostgreSQL gestionada vía Supabase (no instalación local — ver [[podpulse-project-constitution]], decisión registrada por restricciones de permisos de instalación en el equipo de desarrollo).
 - Toda la configuración debe provenir de variables de entorno.
 
 Docker podrá incorporarse en una fase posterior para despliegue, sin afectar la arquitectura.

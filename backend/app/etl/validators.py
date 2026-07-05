@@ -1,0 +1,114 @@
+"""Validate: coerción de tipos y detección de errores por fila.
+
+Sigue la regla de [[data-engineering-postgresql]]: nunca "limpia" datos de
+forma silenciosa — cada fila que no puede coercionarse a un tipo válido, o que
+viola una regla de negocio conocida, se rechaza con un motivo explícito.
+"""
+
+from datetime import date
+from typing import Any
+
+import pandas as pd
+
+from app.etl.column_specs import ColumnSpec, FileTypeSpec
+from app.etl.exceptions import RowValidationError
+
+VALID_TIPOS = {"podcast", "programa"}
+VALID_SENTIMIENTOS = {"positivo", "negativo", "neutral"}
+
+
+def validate_row(spec: FileTypeSpec, raw_row: dict[str, Any]) -> dict[str, Any]:
+    """Valida y coerciona una fila cruda según el spec del tipo de archivo.
+
+    Devuelve un dict con valores ya tipados en Python (no strings). Lanza
+    RowValidationError con un motivo legible si algún valor no es válido.
+    """
+    clean: dict[str, Any] = {}
+    for col in spec.columns:
+        raw_value = raw_row.get(col.name)
+        if _is_missing(raw_value):
+            if col.required:
+                raise RowValidationError(f"Falta el valor requerido de '{col.name}'")
+            clean[col.name] = None
+            continue
+
+        clean[col.name] = _coerce(col, str(raw_value).strip())
+
+    return clean
+
+
+def _is_missing(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, float):
+        return pd.isna(value)
+    if isinstance(value, str):
+        return value.strip() == ""
+    return False
+
+
+def _coerce(col: ColumnSpec, value: str) -> Any:
+    try:
+        if col.dtype == "str":
+            return value
+        if col.dtype == "int":
+            return int(float(value))  # tolera "10.0" además de "10"
+        if col.dtype == "float":
+            return float(value)
+        if col.dtype == "bool":
+            return _coerce_bool(value)
+        if col.dtype == "date":
+            return _coerce_date(value)
+    except (ValueError, TypeError) as exc:
+        raise RowValidationError(
+            f"El valor '{value}' de '{col.name}' no es un {col.dtype} válido"
+        ) from exc
+
+    raise RowValidationError(f"Tipo de columna desconocido: {col.dtype}")
+
+
+def _coerce_bool(value: str) -> bool:
+    if value.lower() in {"1", "true"}:
+        return True
+    if value.lower() in {"0", "false"}:
+        return False
+    raise ValueError(f"valor booleano no reconocido: {value}")
+
+
+def _coerce_date(value: str) -> date:
+    parsed = pd.to_datetime(value, dayfirst=True, errors="raise")
+    return parsed.date()
+
+
+def validate_non_negative(value: int | float | None, field_name: str) -> None:
+    if value is not None and value < 0:
+        raise RowValidationError(f"'{field_name}' no puede ser negativo: {value}")
+
+
+def validate_tipo(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    if normalized not in VALID_TIPOS:
+        raise RowValidationError(
+            f"'Tipo' inválido: '{value}' (valores permitidos: {sorted(VALID_TIPOS)})"
+        )
+    return normalized
+
+
+def validate_sentimiento(value: str) -> str:
+    normalized = value.strip().lower()
+    if normalized not in VALID_SENTIMIENTOS:
+        raise RowValidationError(
+            f"Sentimiento inválido: '{value}' (valores permitidos: {sorted(VALID_SENTIMIENTOS)})"
+        )
+    return normalized
+
+
+def validate_scores_sum_to_one(positive: float, negative: float, neutral: float) -> None:
+    total = positive + negative + neutral
+    if abs(total - 1) > 0.01:
+        raise RowValidationError(
+            f"Los scores de sentimiento no suman 1.0 (suman {total:.4f}): "
+            f"positive={positive}, negative={negative}, neutral={neutral}"
+        )

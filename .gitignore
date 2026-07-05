@@ -9,11 +9,16 @@ env/
 .mypy_cache/
 .ruff_cache/
 
+# Almacenamiento temporal de archivos subidos (CSV/Excel) — el dato ya
+# procesado vive en Postgres, el archivo crudo no se versiona.
+backend/storage/
+
 # Node / React frontend
 node_modules/
 dist/
 build/
 .vite/
+*.tsbuildinfo
 
 # Env & secrets
 .env

@@ -1,0 +1,25 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+# Un solo event loop para toda la sesión de tests (fixtures Y tests): el
+# engine async de SQLAlchemy se crea una vez a nivel de módulo, así que todo
+# lo que lo use debe compartir el mismo loop — mezclar "session" en fixtures
+# con "function" en tests produce "Future attached to a different loop".
+# Ver [[fastapi-enterprise-backend]] (sección Tests).
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Las migraciones son generadas por Alembic con su propio template — no se
+# reformatean a mano porque cada `alembic revision` las vuelve a generar así.
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Depends(...)/Query(...)/File(...) en defaults es el patrón idiomático de FastAPI
+# para DI (ver [[fastapi-enterprise-backend]]) — no es el bug que B008 detecta.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.File"]

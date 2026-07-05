@@ -17,7 +17,7 @@ El stack de PodPulse **no se elige tarea a tarea, ya está decidido**:
 
 - **Frontend**: React + TypeScript + Tailwind — aplica siempre [[react-enterprise-frontend]] (arquitectura feature-based, TanStack Query, React Router, Recharts, responsive, dark mode).
 - **Backend**: FastAPI — aplica siempre [[fastapi-enterprise-backend]] (SQLAlchemy 2 async, Alembic, Pydantic, DI, JWT, estructura de carpetas por capas).
-- **Base de datos**: PostgreSQL — aplica siempre [[data-engineering-postgresql]] (integridad de datos, migraciones seguras, constraints, auditoría).
+- **Base de datos**: PostgreSQL gestionado vía **Supabase** — esta es la base de datos oficial de desarrollo del proyecto, no una alternativa temporal (ver "Entorno de desarrollo" abajo). Aplica siempre [[data-engineering-postgresql]] (integridad de datos, migraciones seguras, constraints, auditoría).
 - Toda decisión de seguridad (autenticación, roles, validación) sigue [[enterprise-security]].
 - Toda decisión de diseño no trivial sigue el flujo de análisis-antes-que-código de [[enterprise-software-architect]].
 
@@ -25,17 +25,26 @@ No propongas ni introduzcas un framework, librería estructural o motor de base 
 
 ## Entorno de desarrollo
 
-El proyecto utilizará inicialmente un entorno local.
+El proyecto utilizará inicialmente un entorno local para backend y frontend.
 
-- **Backend**: FastAPI
-- **Frontend**: React + Vite
-- **Base de datos**: PostgreSQL
+- **Backend**: FastAPI (local)
+- **Frontend**: React + Vite (local)
+- **Base de datos**: **Supabase (PostgreSQL gestionado)** — es la base de datos **oficial** de desarrollo de PodPulse. El proyecto **no usa ni usará una instalación local de PostgreSQL**; esto no es una solución temporal ni un workaround a revisar más adelante, es la decisión definitiva de infraestructura de datos mientras el proyecto exista en esta forma.
 
 No utilizar Docker durante el desarrollo inicial.
 
 Toda la arquitectura debe mantenerse compatible con Docker para un futuro despliegue.
 
 El código nunca debe depender exclusivamente de Docker para ejecutarse.
+
+### Decisión registrada: Supabase como base de datos oficial (no PostgreSQL local)
+
+El equipo de desarrollo no tiene permisos de instalación con elevación en su máquina (política corporativa bloquea instaladores fuera del Portal de empresa, incluyendo PostgreSQL). Por eso la base de datos usa **Supabase** (Postgres gestionado) en lugar de una instancia local — backend y frontend siguen 100% locales, sin Docker. Esta decisión es permanente para el proyecto, no una excepción de la fase actual: cualquier tarea futura (scripts, documentación, onboarding, CI) debe asumir Supabase como la única base de datos de desarrollo, y nunca reintroducir instrucciones de instalación local de PostgreSQL.
+
+- Se usa un **proyecto de Supabase separado para desarrollo**, distinto del proyecto marcado como producción — nunca se corren migraciones ni datos de prueba contra producción.
+- La conexión es la misma interfaz de siempre (`DATABASE_URL` vía variable de entorno, SQLAlchemy + Alembic) — el resto del stack y las skills técnicas ([[fastapi-enterprise-backend]], [[data-engineering-postgresql]]) no cambian.
+- **Toda credencial de conexión (host, usuario, contraseña, `DATABASE_URL` completa) se obtiene exclusivamente de variables de entorno (`backend/.env`, nunca versionado) — nunca se hardcodea en código, scripts, tests, ni en ningún archivo versionado.** `backend/.env.example` documenta qué variables existen, siempre con placeholders, nunca con una credencial real.
+- Detalles de configuración en `database/README.md`.
 
 ## Ingesta de datos: CSV y Excel
 
