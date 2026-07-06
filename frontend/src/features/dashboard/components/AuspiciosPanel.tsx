@@ -5,27 +5,7 @@ import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useAuspicios } from "@/features/dashboard/hooks/useAuspicios";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
-
-const MESES = [
-  "Enero",
-  "Febrero",
-  "Marzo",
-  "Abril",
-  "Mayo",
-  "Junio",
-  "Julio",
-  "Agosto",
-  "Septiembre",
-  "Octubre",
-  "Noviembre",
-  "Diciembre",
-];
-
-function mesFromFechaInicio(fechaInicio: string | undefined): number | undefined {
-  if (!fechaInicio) return undefined;
-  const mes = Number(fechaInicio.split("-")[1]);
-  return Number.isInteger(mes) && mes >= 1 && mes <= 12 ? mes : undefined;
-}
+import { MESES, mesFromFechaInicio } from "@/features/dashboard/lib/mes";
 
 /**
  * Panel AUSPICIOS — Doc-Migración §5.1: "muestra la lista de marcas

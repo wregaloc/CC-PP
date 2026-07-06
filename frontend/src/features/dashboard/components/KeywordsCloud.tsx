@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useKeywords } from "@/features/dashboard/hooks/useKeywords";
+import { MESES, mesFromFechaInicio } from "@/features/dashboard/lib/mes";
 import type { SentimientoFiltro } from "@/features/dashboard/types";
 
 const SENTIMIENTO_TABS: { value: SentimientoFiltro; label: string }[] = [
@@ -34,8 +35,9 @@ const MAX_FONT_REM = 2.2;
 export function KeywordsCloud() {
   const { filters } = useDashboardFilters();
   const [sentimiento, setSentimiento] = useState<SentimientoFiltro>("todos");
+  const mes = mesFromFechaInicio(filters.fecha_inicio);
 
-  const query = useKeywords({ programa: filters.programa, sentimiento, limit: 60 });
+  const query = useKeywords({ programa: filters.programa, mes, sentimiento, limit: 60 });
 
   const sized = useMemo(() => {
     const data = query.data ?? [];
@@ -49,7 +51,12 @@ export function KeywordsCloud() {
     }));
   }, [query.data]);
 
-  const title = filters.programa ? `Sentiment de ${filters.programa}` : "Sentiment por Keywords";
+  const contexto = filters.programa
+    ? mes
+      ? `${filters.programa} en ${MESES[mes - 1]}`
+      : filters.programa
+    : null;
+  const title = contexto ? `Sentiment de ${contexto}` : "Sentiment por Keywords";
 
   return (
     <DashboardCard
