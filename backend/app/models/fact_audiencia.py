@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     BigInteger,
-    Boolean,
     CheckConstraint,
     Date,
     ForeignKey,
@@ -49,7 +48,10 @@ class FactAudiencia(Base):
     programa_id: Mapped[int] = mapped_column(
         ForeignKey("dim_programa.id", ondelete="RESTRICT"), nullable=False
     )
-    es_emision: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # Conteo de emisiones ese día (no un flag sí/no) — medida DAX original:
+    # Emisiones = SUM(Es_Emision). Puede ser 0 o mayor a 1 (varias emisiones
+    # el mismo día); ver docs/AUDITORIA_BACKEND_v1.md Adenda 2.
+    es_emision: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
     vistas_diarias: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
     busquedas_diarias: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
     likes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
@@ -70,6 +72,7 @@ class FactAudiencia(Base):
     __table_args__ = (
         UniqueConstraint("fecha", "programa_id", name="uq_fact_audiencia_fecha_programa"),
         CheckConstraint("mes_num BETWEEN 1 AND 12", name="ck_fact_audiencia_mes_num_range"),
+        CheckConstraint("es_emision >= 0", name="ck_fact_audiencia_es_emision_non_negative"),
         Index("ix_fact_audiencia_anio_mes", "anio", "mes_num"),
         Index("ix_fact_audiencia_programa", "programa_id"),
         Index("ix_fact_audiencia_anio_semana", "anio", "semana_num"),

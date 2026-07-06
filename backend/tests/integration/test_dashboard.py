@@ -49,22 +49,22 @@ async def seeded(db_session: AsyncSession, make_user, make_programa):
         [
             FactAudiencia(
                 fecha=date(2030, 1, 1), mes_num=1, anio=2030, semana_num=1,
-                programa_id=programa_a.id, es_emision=True, vistas_diarias=150,
+                programa_id=programa_a.id, es_emision=1, vistas_diarias=150,
                 busquedas_diarias=20, likes=10, comentarios=1, engagement=0.05,
             ),
             FactAudiencia(
                 fecha=date(2030, 1, 2), mes_num=1, anio=2030, semana_num=1,
-                programa_id=programa_a.id, es_emision=False, vistas_diarias=150,
+                programa_id=programa_a.id, es_emision=0, vistas_diarias=150,
                 busquedas_diarias=10, likes=5, comentarios=2, engagement=0.03,
             ),
             FactAudiencia(
                 fecha=date(2030, 1, 1), mes_num=1, anio=2030, semana_num=1,
-                programa_id=programa_c.id, es_emision=False, vistas_diarias=300,
+                programa_id=programa_c.id, es_emision=0, vistas_diarias=300,
                 busquedas_diarias=0, likes=0, comentarios=0,
             ),
             FactAudiencia(
                 fecha=date(2030, 1, 1), mes_num=1, anio=2030, semana_num=1,
-                programa_id=programa_b.id, es_emision=True, vistas_diarias=500,
+                programa_id=programa_b.id, es_emision=2, vistas_diarias=500,
                 busquedas_diarias=5, pico_max_vivo=1000, promedio_vivo=800,
             ),
         ]
@@ -122,7 +122,7 @@ async def test_kpis_are_visible_to_non_admin_roles(
     assert body["vistas_totales"] == 1100  # 150+150+300+500
     assert body["likes"] == 15
     assert body["comentarios"] == 3
-    assert body["emisiones"] == 2  # programa_a día1 (True) + programa_b (True)
+    assert body["emisiones"] == 3  # SUM: programa_a día1 (1) + programa_b (2, no COUNT de filas)
 
 
 async def test_kpis_filters_by_programa(client: httpx.AsyncClient, seeded: dict) -> None:
@@ -220,7 +220,7 @@ async def test_evolutivo_groups_by_mes_with_emisiones(
     assert len(body) == 1
     assert body[0]["periodo"] == "2030-01"
     assert body[0]["vistas_totales"] == 1100
-    assert body[0]["metrica_secundaria"] == 2
+    assert body[0]["metrica_secundaria"] == 3  # SUM(es_emision): 1+0+0+2
 
 
 async def test_ranking_programas_dense_rank_ties(client: httpx.AsyncClient, seeded: dict) -> None:
@@ -237,6 +237,43 @@ async def test_ranking_programas_dense_rank_ties(client: httpx.AsyncClient, seed
     assert by_name["TEST_C"]["vistas_totales"] == 300
     assert by_name["TEST_A"]["ranking"] == 1
     assert by_name["TEST_C"]["ranking"] == 1  # empate: mismo rank, DENSE_RANK
+    # `tipo` viaja en la respuesta (no solo como filtro) — ver Doc-Migración
+    # §5.1, el ranking original colorea cada barra por tipo simultáneamente.
+    assert by_name["TEST_A"]["tipo"] == "podcast"
+    assert by_name["TEST_C"]["tipo"] == "programa"
+
+
+async def test_ranking_programas_filters_by_formato(
+    client: httpx.AsyncClient, db_session: AsyncSession, make_programa, make_user
+) -> None:
+    await make_user(email="viewer-formato@podpulse.pe", password="Valida123", role=UserRole.CLIENTE)
+    token = await _login(client, "viewer-formato@podpulse.pe", "Valida123")
+    programa = await make_programa("TEST_FORMATO", "Canal Formato", tipo=ProgramType.PODCAST)
+    db_session.add_all(
+        [
+            FactAudiencia(
+                fecha=date(2030, 2, 1), mes_num=2, anio=2030, semana_num=5,
+                programa_id=programa.id, es_emision=1, vistas_diarias=100, formato="Vivo",
+            ),
+            FactAudiencia(
+                fecha=date(2030, 2, 2), mes_num=2, anio=2030, semana_num=5,
+                programa_id=programa.id, es_emision=0, vistas_diarias=900, formato="Grabado",
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/ranking/programas",
+        headers=_auth(token),
+        params={"canal": "Canal Formato", "formato": "Vivo"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["programa"] == "TEST_FORMATO"
+    assert body[0]["vistas_totales"] == 100  # solo la fila "Vivo", no las 900 de "Grabado"
 
 
 async def test_ranking_canales(client: httpx.AsyncClient, seeded: dict) -> None:

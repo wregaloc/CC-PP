@@ -7,6 +7,8 @@ a punta. Toda fila creada usa el prefijo TEST_ETL_ y el fixture `test_admin_user
 limpia todo el rastro al finalizar (ver conftest.py).
 """
 
+from datetime import date, timedelta
+
 from sqlalchemy import select
 
 from app.etl.pipeline import (
@@ -91,6 +93,63 @@ async def test_data_pipeline_loads_and_upserts_idempotently(
     ).scalars().all()
     assert len(facts_after) == 1  # sigue siendo 1 fila, no 2
     assert facts_after[0].vistas_diarias == 9999
+
+
+async def test_data_pipeline_upserts_batch_over_asyncpg_param_limit(
+    db_session, test_admin_user, data_csv_factory
+):
+    """Regresión: asyncpg rechaza una sola consulta con más de 32,767
+    parámetros. Con ~17 columnas por fila, una sola sentencia INSERT con más
+    de ~1927 filas ya la excede — este test usa 2200 filas de un mismo
+    programa (una fecha distinta cada una, vía date+timedelta) para forzar
+    más de un lote en `_upsert` (ver app/etl/repository.py,
+    _UPSERT_BATCH_SIZE=1000) y confirmar que una carga con volumen real
+    (decenas de miles de filas) no vuelve a romper con `InterfaceError: the
+    number of query arguments cannot exceed 32767`."""
+    row_count = 2200
+    base = date(2020, 1, 1)
+    programa = f"{TEST_PROGRAMA_PREFIX}Programa Bulk"
+    rows = [
+        {
+            "Fecha": (base + timedelta(days=i)).strftime("%d/%m/%Y"),
+            "Mes": "Enero",
+            "Puesto": 1,
+            "Programa": programa,
+            "Categoria": "Conversacional",
+            "Canal": "Latina",
+            "Es_Emision": 1,
+            "Vistas_Diarias": 100,
+            "Busquedas_Diarias": 10,
+            "Likes": 1,
+            "Comentarios": 1,
+            "Engagement": 0.05,
+            "Formato": "Grabado",
+            "Titulo del Video": None,
+            "Link del Video": None,
+            "Tipo": "podcast",
+            "Pico Max": None,
+            "Promedio en Vivo": None,
+        }
+        for i in range(row_count)
+    ]
+    csv_path = data_csv_factory(rows)
+
+    report = await run_data_pipeline(db_session, csv_path, test_admin_user)
+    await db_session.commit()
+
+    assert report.status == "success"
+    assert report.rows_loaded == row_count
+    assert report.rows_skipped == 0
+
+    programa_row = (
+        await db_session.execute(select(Programa).where(Programa.nombre == programa))
+    ).scalar_one()
+    facts = (
+        await db_session.execute(
+            select(FactAudiencia).where(FactAudiencia.programa_id == programa_row.id)
+        )
+    ).scalars().all()
+    assert len(facts) == row_count
 
 
 async def test_data_pipeline_rejects_invalid_rows_but_loads_valid_ones(

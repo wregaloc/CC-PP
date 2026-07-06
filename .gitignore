@@ -13,6 +13,12 @@ env/
 # procesado vive en Postgres, el archivo crudo no se versiona.
 backend/storage/
 
+# Punto de entrega local de archivos crudos (CSV/Excel) pendientes de cargar
+# vía la API — nunca se versionan datos de negocio reales.
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/README.md
+
 # Node / React frontend
 node_modules/
 dist/

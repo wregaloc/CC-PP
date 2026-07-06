@@ -40,7 +40,7 @@ DATA_SPEC = FileTypeSpec(
         ColumnSpec("Programa", "str"),
         ColumnSpec("Categoria", "str", required=False),
         ColumnSpec("Canal", "str"),
-        ColumnSpec("Es_Emision", "bool"),
+        ColumnSpec("Es_Emision", "int"),  # conteo de emisiones/día, no flag (DAX: SUM(Es_Emision))
         ColumnSpec("Vistas_Diarias", "int"),
         ColumnSpec("Busquedas_Diarias", "int"),
         ColumnSpec("Likes", "int", required=False),

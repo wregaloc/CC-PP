@@ -182,7 +182,7 @@ Rol requerido en **todos** estos endpoints: **cualquier usuario autenticado** (a
 Parámetro común a casi todos: `?fecha_inicio&fecha_fin` (ambos opcionales; `422 VALIDATION_ERROR` si `fecha_inicio > fecha_fin`).
 
 ### GET /dashboard/kpis
-`?fecha_inicio&fecha_fin&programa&canal` → `{vistas_totales, engagement_rate, likes, comentarios, emisiones}`. `engagement_rate` es una **fracción 0-1** (no un porcentaje ya multiplicado por 100) — mismo criterio que `score_positivo/negativo/neutral`. `emisiones` = cantidad de días con `es_emision=true` en el rango (medida DAX `Emisiones = SUM(Es_Emision)`).
+`?fecha_inicio&fecha_fin&programa&canal` → `{vistas_totales, engagement_rate, likes, comentarios, emisiones}`. `engagement_rate` es una **fracción 0-1** (no un porcentaje ya multiplicado por 100) — mismo criterio que `score_positivo/negativo/neutral`. `emisiones` = `SUM(Es_Emision)` en el rango (medida DAX `Emisiones = SUM(Es_Emision)`) — `Es_Emision` es un conteo de emisiones por día (puede ser >1), no un booleano.
 
 ### GET /dashboard/sentiment-kpis
 `?fecha_inicio&fecha_fin&programa` → `{pct_positivo, pct_negativo, pct_neutral}` (fracciones 0-1). `fact_sentimiento` solo tiene grano (año, mes) — el rango de fechas se aplica sobre el primer día de cada mes.
@@ -194,7 +194,7 @@ Parámetro común a casi todos: `?fecha_inicio&fecha_fin` (ambos opcionales; `42
 `?fecha_inicio&fecha_fin&granularidad={anio|mes|semana|dia}&metrica_secundaria={emisiones|busquedas}&programa&canal` → `[{periodo, vistas_totales, metrica_secundaria}]`. Reemplaza la medida DAX "KPI Vistas Promedio Dinámico" (que el propio TDD marcó como lógica frágil, basada en `CONTAINSSTRING` sobre texto) por un switch explícito sobre un enum — agrupa siempre por columnas ya materializadas en el ETL (`anio`/`mes_num`/`semana_num`), nunca recalculando fecha en SQL. Formato de `periodo`: `dia`→`YYYY-MM-DD`, `semana`→`YYYY-Wnn`, `mes`→`YYYY-MM`, `anio`→`YYYY`.
 
 ### GET /dashboard/ranking/programas y /dashboard/ranking/canales
-`?fecha_inicio&fecha_fin&canal&tipo&limit=20` (programas) / `?fecha_inicio&fecha_fin&limit=20` (canales) → `[{programa, canal, vistas_totales, ranking}]` / `[{canal, vistas_totales, ranking}]`. `ranking` usa `DENSE_RANK()` (equivalente exacto a `RANKX ... Dense` en la medida DAX original) — los empates comparten el mismo puesto y el siguiente valor no deja huecos.
+`?fecha_inicio&fecha_fin&canal&tipo&formato&limit=20` (programas) / `?fecha_inicio&fecha_fin&limit=20` (canales) → `[{programa, canal, tipo, vistas_totales, ranking}]` / `[{canal, vistas_totales, ranking}]`. `ranking` usa `DENSE_RANK()` (equivalente exacto a `RANKX ... Dense` en la medida DAX original) — los empates comparten el mismo puesto y el siguiente valor no deja huecos. `tipo` (`podcast`/`programa`/`null`) se incluye en cada item además de servir como filtro, para que el consumidor pueda distinguir/colorear por tipo sin tener que hacer una llamada por cada valor. `formato` filtra por `DATA[Formato]` (valores reales: `Grabado`, `Vivo`, `Finalizado` — sin normalizar ni agrupar, se pasa tal cual a la columna).
 
 ### GET /dashboard/canal/{canal_id}/programas y /dashboard/canal/{canal_id}/live-stats
 `?fecha_inicio&fecha_fin&categoria` (solo `/programas`) → `[{programa, vistas, pico_max, promedio_vivo}]` / `{pico_max_vivo, promedio_vivo}`.

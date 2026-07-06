@@ -34,13 +34,13 @@ async def seeded(db_session: AsyncSession, make_user, make_programa):
     db_session.add(
         FactAudiencia(
             fecha=date(2026, 3, 10), mes_num=3, anio=2026, semana_num=10,
-            programa_id=programa.id, es_emision=True, vistas_diarias=10,
+            programa_id=programa.id, es_emision=1, vistas_diarias=10,
         )
     )
     db_session.add(
         FactAudiencia(
             fecha=date(2026, 3, 20), mes_num=3, anio=2026, semana_num=12,
-            programa_id=programa.id, es_emision=False, vistas_diarias=10,
+            programa_id=programa.id, es_emision=0, vistas_diarias=10,
         )
     )
     await db_session.flush()

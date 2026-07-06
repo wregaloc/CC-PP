@@ -44,7 +44,7 @@ async def get_kpis(
         func.avg(FactAudiencia.engagement).label("engagement_rate"),
         func.coalesce(func.sum(FactAudiencia.likes), 0).label("likes"),
         func.coalesce(func.sum(FactAudiencia.comentarios), 0).label("comentarios"),
-        func.count().filter(FactAudiencia.es_emision.is_(True)).label("emisiones"),
+        func.coalesce(func.sum(FactAudiencia.es_emision), 0).label("emisiones"),
     )
     if programa is not None or canal is not None:
         stmt = stmt.join(Programa, FactAudiencia.programa_id == Programa.id)
@@ -123,7 +123,7 @@ async def get_evolutivo(
     ETL (anio/mes_num/semana_num) — sin recalcular fecha en SQL."""
     vistas_col = func.coalesce(func.sum(FactAudiencia.vistas_diarias), 0)
     secondary_col = (
-        func.count().filter(FactAudiencia.es_emision.is_(True))
+        func.coalesce(func.sum(FactAudiencia.es_emision), 0)
         if metrica_secundaria == MetricaSecundaria.EMISIONES
         else func.coalesce(func.sum(FactAudiencia.busquedas_diarias), 0)
     )
@@ -179,11 +179,20 @@ async def get_ranking_programas(
     filters: DateRangeParams,
     canal: str | None,
     tipo: ProgramType | None,
+    formato: str | None,
     limit: int,
 ) -> list[dict[str, Any]]:
     """TDD §8.5 /dashboard/ranking/programas. Medida DAX "Ranking Programas":
     RANKX ... Dense sobre Vistas Totales DESC → DENSE_RANK() (empates comparten
-    puesto, sin huecos en la numeración siguiente)."""
+    puesto, sin huecos en la numeración siguiente).
+
+    `tipo` se incluye en la respuesta (además de como filtro) para que el
+    frontend pueda colorear cada barra según su tipo simultáneamente, en vez
+    de exigir un filtro excluyente — ver Doc-Migración §5.1 (el ranking
+    original distingue tipo por color de barra, no por pestaña). `formato`
+    filtra por DATA[Formato] (Grabado/Vivo/Finalizado), columna ya existente
+    en fact_audiencia — ver decisión registrada en Adenda 3 de la auditoría.
+    """
     vistas_col = func.coalesce(func.sum(FactAudiencia.vistas_diarias), 0)
     ranking_col = func.dense_rank().over(order_by=vistas_col.desc())
 
@@ -191,16 +200,19 @@ async def get_ranking_programas(
         select(
             Programa.nombre.label("programa"),
             Programa.canal.label("canal"),
+            Programa.tipo.label("tipo"),
             vistas_col.label("vistas_totales"),
             ranking_col.label("ranking"),
         )
         .join(Programa, FactAudiencia.programa_id == Programa.id)
-        .group_by(Programa.nombre, Programa.canal)
+        .group_by(Programa.nombre, Programa.canal, Programa.tipo)
     )
     if canal is not None:
         stmt = stmt.where(Programa.canal == canal)
     if tipo is not None:
         stmt = stmt.where(Programa.tipo == tipo)
+    if formato is not None:
+        stmt = stmt.where(FactAudiencia.formato == formato)
     stmt = _apply_date_range(stmt, FactAudiencia.fecha, filters)
     stmt = stmt.order_by(vistas_col.desc()).limit(limit)
 

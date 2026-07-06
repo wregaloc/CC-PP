@@ -8,10 +8,8 @@ export interface NavItem {
   allowedRoles?: UserRole[];
 }
 
-/** Navegación de la app. Vacía de features de negocio a propósito en esta
- * fase (Fase 7 — solo infraestructura, sin dashboard todavía, ver README). */
 export const NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Inicio" },
+  { to: "/", label: "Dashboard" },
   { to: "/admin", label: "Administración", allowedRoles: ["admin"] },
 ];
 

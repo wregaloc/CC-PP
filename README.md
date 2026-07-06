@@ -2,7 +2,7 @@
 
 Plataforma de inteligencia de audiencias para el ecosistema de podcasting/streaming en Perú. PodPulse **reemplaza un dashboard de Power BI existente** por una aplicación web propia (ver `docs/`), preservando fielmente su lógica de negocio.
 
-> **Estado actual: Fase 7 — Infraestructura de Frontend (completada, pendiente de aprobación para dashboards).** El backend está completo y auditado: modelo de datos, autenticación (login, logout, JWT + refresh, bcrypt, roles, protección de rutas), módulo administrativo (carga de archivos con ETL, historial de cargas, detalle de errores, administración de usuarios) y API de dashboard (KPIs, evolutivo, rankings, keywords, sentimiento, auspicios, filtros) — ver `docs/API.md`. El frontend ahora tiene su infraestructura completa (React + TypeScript + Vite + Tailwind, Axios con manejo de sesión/refresh, TanStack Query, React Router con Protected Routes, layout responsive con Navbar/Sidebar, manejo global de errores) lista para consumir la API existente — **todavía sin dashboards, gráficos ni KPIs implementados**, a la espera de aprobación explícita. Ver el plan de fases en `docs/PODPULSE_TDD_v1.0.docx` §11.
+> **Estado actual: Fase 8 — Primera página del Dashboard (completada, pendiente de aprobación para el resto de páginas).** El backend está completo y auditado — ver `docs/API.md`. El frontend tiene su infraestructura (Fase 7: Axios con sesión/refresh, TanStack Query, React Router con Protected Routes, layout responsive) y ahora replica la Página 1 del Power BI original (Doc-Migración §5.1: barra de filtros, KPIs, evolutivo de vistas, ranking de programas, nube de keywords por sentimiento, KPIs de sentimiento, auspicios) consumiendo únicamente la API existente, sin lógica de negocio en el cliente. Todavía sin las páginas 2+ del dashboard original. Ver el plan de fases en `docs/PODPULSE_TDD_v1.0.docx` §11.
 
 ## Stack
 
@@ -34,20 +34,20 @@ Cada workspace (`backend/`, `frontend/`) tiene su propio `requirements.txt`/`pac
 
 ```
 src/
-├── app/                # composición raíz: App, router, ProtectedRoute, providers globales
+├── app/                # composición raíz: App, router (dashboard con lazy-loading), ProtectedRoute, providers
 ├── components/
-│   ├── ui/              # primitivos reutilizables agnósticos de negocio (Button, TextField, Toast, ...)
+│   ├── ui/              # primitivos reutilizables (Button, TextField, Toast, Skeleton, QueryState, ...)
 │   └── layout/          # Navbar, Sidebar, AppLayout
 ├── features/
 │   ├── auth/             # login/logout/sesión: api, context, pages, types
-│   ├── home/             # página placeholder post-login (sin KPIs todavía)
+│   ├── dashboard/         # Página 1 del dashboard (Fase 8): api, hooks, context de filtros, components, pages
 │   └── admin/            # página placeholder de administración (sin funcionalidad todavía)
 ├── lib/                 # cliente Axios + interceptores, normalización de errores, JWT, token store
 ├── types/               # tipos globales compartidos (roles)
 └── hooks/                # reservado para hooks genéricos cross-feature
 ```
 
-Dependencias clave añadidas en esta fase: `axios` (cliente HTTP con interceptores de sesión). El resto del stack (`react-router-dom`, `@tanstack/react-query`) ya venía del bootstrap inicial.
+`features/dashboard/` sigue la misma arquitectura feature-based que `auth/`: `api/` (dashboardApi, filtersApi), `hooks/` (un hook TanStack Query por endpoint), `context/` (filtros compartidos: fecha/programa/canal), `components/` (KpiCard, DashboardCard, EvolutivoChart, RankingProgramasPanel, RankingTable, KeywordsCloud, SentimentKpiCards, AuspiciosPanel, FilterBar), `pages/DashboardPage.tsx`. Se usa `recharts` (ya presente desde el bootstrap) para los gráficos; la nube de palabras se implementó como una lista HTML con tamaño proporcional (Recharts no tiene un primitivo de nube de palabras).
 
 ## Requisitos previos
 

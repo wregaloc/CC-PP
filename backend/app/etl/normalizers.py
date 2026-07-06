@@ -59,6 +59,7 @@ def prepare_data_row(clean: dict[str, Any]) -> tuple[dict[str, Any], ProgramaRef
         "Pico Max",
         "Promedio en Vivo",
         "Engagement",
+        "Es_Emision",
     ):
         validate_non_negative(clean.get(field_name), field_name)
 

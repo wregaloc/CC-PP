@@ -21,7 +21,7 @@ _SPEC = FileTypeSpec(
         ColumnSpec("Fecha", "date"),
         ColumnSpec("Programa", "str"),
         ColumnSpec("Vistas_Diarias", "int"),
-        ColumnSpec("Es_Emision", "bool"),
+        ColumnSpec("Es_Emision", "int"),
         ColumnSpec("Engagement", "float", required=False),
         ColumnSpec("Categoria", "str", required=False),
     ),
@@ -43,7 +43,7 @@ def test_validate_row_happy_path_coerces_types() -> None:
     assert clean["Fecha"] == date(2026, 7, 5)
     assert clean["Programa"] == "Hablando Huevadas"
     assert clean["Vistas_Diarias"] == 1234
-    assert clean["Es_Emision"] is True
+    assert clean["Es_Emision"] == 1
     assert clean["Engagement"] == pytest.approx(6.25)
     assert clean["Categoria"] == "Conversacional"
 
@@ -67,7 +67,7 @@ def test_validate_row_missing_optional_becomes_none() -> None:
 
     assert clean["Engagement"] is None
     assert clean["Categoria"] is None
-    assert clean["Es_Emision"] is False
+    assert clean["Es_Emision"] == 0
 
 
 def test_validate_row_invalid_int_raises() -> None:

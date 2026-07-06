@@ -43,7 +43,7 @@ def test_prepare_data_row_derives_period_and_programa_ref() -> None:
         "Categoria": "Conversacional",
         "Tipo": "podcast",
         "Puesto": 1,
-        "Es_Emision": True,
+        "Es_Emision": 2,
         "Vistas_Diarias": 1000,
         "Busquedas_Diarias": 50,
         "Likes": 10,
@@ -63,6 +63,7 @@ def test_prepare_data_row_derives_period_and_programa_ref() -> None:
     assert row["mes_num"] == 7
     assert row["semana_num"] == week_num_excel_style(date(2026, 7, 5))
     assert row["vistas_diarias"] == 1000
+    assert row["es_emision"] == 2  # varias emisiones el mismo día son válidas, no solo 0/1
     assert ref == ProgramaRef(
         nombre="Hablando Huevadas",
         canal="Latina",
@@ -80,7 +81,7 @@ def test_prepare_data_row_rejects_negative_metric() -> None:
         "Categoria": None,
         "Tipo": None,
         "Puesto": None,
-        "Es_Emision": False,
+        "Es_Emision": 0,
         "Vistas_Diarias": -5,
         "Busquedas_Diarias": 0,
         "Likes": None,
@@ -94,6 +95,31 @@ def test_prepare_data_row_rejects_negative_metric() -> None:
     }
 
     with pytest.raises(RowValidationError, match="Vistas_Diarias"):
+        prepare_data_row(clean)
+
+
+def test_prepare_data_row_rejects_negative_es_emision() -> None:
+    clean = {
+        "Fecha": date(2026, 7, 5),
+        "Programa": "X",
+        "Canal": "Y",
+        "Categoria": None,
+        "Tipo": None,
+        "Puesto": None,
+        "Es_Emision": -1,
+        "Vistas_Diarias": 0,
+        "Busquedas_Diarias": 0,
+        "Likes": None,
+        "Comentarios": None,
+        "Engagement": None,
+        "Pico Max": None,
+        "Promedio en Vivo": None,
+        "Formato": None,
+        "Titulo del Video": None,
+        "Link del Video": None,
+    }
+
+    with pytest.raises(RowValidationError, match="Es_Emision"):
         prepare_data_row(clean)
 
 

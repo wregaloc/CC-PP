@@ -3,7 +3,7 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
-from app.models.enums import SentimentType
+from app.models.enums import ProgramType, SentimentType
 
 
 class Granularidad(enum.StrEnum):
@@ -34,7 +34,10 @@ class KpisResponse(BaseModel):
     )
     likes: int
     comentarios: int
-    emisiones: int = Field(description="Cantidad de días con es_emision=true en el rango filtrado")
+    emisiones: int = Field(
+        description="SUM(Es_Emision) en el rango filtrado (medida DAX Emisiones = SUM(Es_Emision); "
+        "Es_Emision es un conteo por día, no un flag — puede haber varias emisiones el mismo día)"
+    )
 
 
 class SentimentKpisResponse(BaseModel):
@@ -59,6 +62,7 @@ class EvolutivoPoint(BaseModel):
 class ProgramaRankingItem(BaseModel):
     programa: str
     canal: str
+    tipo: ProgramType | None = Field(description="DATA[Tipo]: podcast | programa (puede ser null)")
     vistas_totales: int
     ranking: int = Field(description="DENSE_RANK sobre vistas_totales DESC")
 

@@ -65,9 +65,12 @@ async def get_ranking_programas(
     filters: DateRangeParams,
     canal: str | None,
     tipo: ProgramType | None,
+    formato: str | None,
     limit: int,
 ) -> list[ProgramaRankingItem]:
-    items = await dashboard_repository.get_ranking_programas(session, filters, canal, tipo, limit)
+    items = await dashboard_repository.get_ranking_programas(
+        session, filters, canal, tipo, formato, limit
+    )
     return [ProgramaRankingItem(**item) for item in items]
 
 

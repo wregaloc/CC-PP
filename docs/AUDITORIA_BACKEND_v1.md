@@ -2,6 +2,14 @@
 
 > **Adenda (2026-07-05, post-aprobación)**: el usuario aprobó los resultados de esta auditoría y autorizó explícitamente el refactor de Unit of Work del hallazgo §3.1. Se implementó (ver §3.1 actualizado) y la suite completa (117 tests) sigue en verde. Los hallazgos §3.2 (IP tras reverse proxy) y §3.3 (`DEBUG` en producción) se mantienen pendientes/documentados tal como se decidió — no se implementan hasta que exista la infraestructura de despliegue (NGINX) correspondiente.
 
+> **Adenda 2 (2026-07-05, prueba con datos reales)**: al perfilar los 4 archivos reales de carga (CSV/Excel) antes de la primera carga de producción, se detectó que `DATA.Es_Emision` trae valores enteros >1 (hasta 25) en 2,455 de 133,998 filas — no es un booleano puro. Se contrastó contra la medida DAX original documentada (`Emisiones = SUM(Es_Emision)`, ver `docs/API.md` §`/dashboard/kpis`) y se confirmó que el modelo vigente (`fact_audiencia.es_emision BOOLEAN`, KPI calculado como `COUNT(es_emision=true)`) **no reproducía la lógica original**: subestimaba `emisiones` en cualquier rango con más de una emisión diaria para un mismo programa. El usuario confirmó el significado de negocio (valores >1 son válidos: varias emisiones el mismo día) y aprobó explícitamente el cambio de esquema. Se implementó:
+> - `fact_audiencia.es_emision`: `Boolean` → `SmallInteger`, con `CheckConstraint(es_emision >= 0)` (migración Alembic `b1c2d3e4f5a6`, aplicada contra Supabase).
+> - ETL: `column_specs.py` (`Es_Emision` ahora dtype `"int"`), `normalizers.py` (se agrega a la validación de no-negativos).
+> - `dashboard_repository.py`: KPI `emisiones` y métrica secundaria del evolutivo, de `COUNT(filter es_emision=true)` a `SUM(coalesce(es_emision, 0))` (2 ocurrencias).
+> - `schemas/dashboard.py` y `docs/API.md`: descripción del campo `emisiones` actualizada para reflejar `SUM`, no conteo de días.
+> - Tests actualizados para usar valores enteros (incluyendo un caso >1 en integración, verificando que `emisiones` ahora suma y no cuenta filas) — 118 tests en verde tras el cambio.
+> - No se tocó ningún endpoint ni contrato de la API (mismo nombre de campo `emisiones`, mismo tipo `int` en la respuesta) — solo cambió el cálculo interno para que sea correcto.
+
 **Fecha**: 2026-07-05
 **Alcance**: todo el código de `backend/app/` implementado hasta ahora (Auth, Módulo Administrativo — uploads/ETL/gestión de usuarios —, y API de Dashboard), más migraciones de Alembic, configuración y suite de tests.
 **Metodología**: lectura completa y directa de los ~55 archivos de `backend/app/` (no por muestreo), contraste contra `docs/PODPULSE_TDD_v1.0.docx` y `docs/PODPULSE_Documentacion_Migracion.docx`, verificación de planes de ejecución SQL (`EXPLAIN ANALYZE`), verificación de deriva esquema↔modelos (`alembic check`), lint (`ruff`) y suite de tests completa (`pytest`) antes y después de los cambios.

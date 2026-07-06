@@ -113,12 +113,15 @@ async def get_evolutivo(
 async def get_ranking_programas(
     canal: str | None = Query(default=None, description="Nombre exacto del canal"),
     tipo: ProgramType | None = Query(default=None, description="podcast | programa"),
+    formato: str | None = Query(default=None, description="Grabado | Vivo | Finalizado"),
     limit: int = Query(default=20, ge=1, le=100),
     filters: DateRangeParams = Depends(date_range_params),
     user: User = Depends(require_authenticated),
     session: AsyncSession = Depends(get_db),
 ) -> list[ProgramaRankingItem]:
-    return await dashboard_service.get_ranking_programas(session, filters, canal, tipo, limit)
+    return await dashboard_service.get_ranking_programas(
+        session, filters, canal, tipo, formato, limit
+    )
 
 
 @router.get(

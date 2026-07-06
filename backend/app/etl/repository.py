@@ -108,19 +108,29 @@ async def upsert_dim_auspicios(session: AsyncSession, rows: list[dict[str, Any]]
     )
 
 
+# asyncpg/PostgreSQL rechaza una sola consulta con más de 32,767 parámetros
+# ($1, $2, ...) — un INSERT de todas las filas de una carga real (decenas de
+# miles) en una sola sentencia lo supera fácilmente. 1000 filas por lote deja
+# margen holgado incluso para el modelo con más columnas de los 4 (~17), sin
+# acercarse al límite.
+_UPSERT_BATCH_SIZE = 1000
+
+
 async def _upsert(
     session: AsyncSession, model: type, rows: list[dict[str, Any]], *, conflict_cols: list[str]
 ) -> None:
     if not rows:
         return
-    stmt = pg_insert(model).values(rows)
-    update_cols = {
-        c.name: getattr(stmt.excluded, c.name)
-        for c in model.__table__.columns
-        if c.name not in {"id", *conflict_cols}
-    }
-    stmt = stmt.on_conflict_do_update(index_elements=conflict_cols, set_=update_cols)
-    await session.execute(stmt)
+    for i in range(0, len(rows), _UPSERT_BATCH_SIZE):
+        batch = rows[i : i + _UPSERT_BATCH_SIZE]
+        stmt = pg_insert(model).values(batch)
+        update_cols = {
+            c.name: getattr(stmt.excluded, c.name)
+            for c in model.__table__.columns
+            if c.name not in {"id", *conflict_cols}
+        }
+        stmt = stmt.on_conflict_do_update(index_elements=conflict_cols, set_=update_cols)
+        await session.execute(stmt)
 
 
 async def create_upload_log(
