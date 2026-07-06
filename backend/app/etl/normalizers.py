@@ -106,7 +106,10 @@ def prepare_auspicios_row(clean: dict[str, Any]) -> tuple[dict[str, Any], Progra
     row = {
         "mes_num": mes_num,
         "mes_nombre": clean["Mes"],
-        "auspiciador": clean["Auspiciadores"],
+        # Normalizado a mayúsculas: la misma marca llega con distinta
+        # capitalización entre archivos/filas (p. ej. "Samsung" / "SAMSUNG"),
+        # lo que duplicaba auspiciadores en la UI y en el conteo del KPI.
+        "auspiciador": clean["Auspiciadores"].strip().upper(),
     }
     return row, programa_ref
 

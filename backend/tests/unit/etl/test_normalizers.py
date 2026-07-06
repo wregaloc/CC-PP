@@ -134,7 +134,9 @@ def test_prepare_auspicios_row() -> None:
 
     row, ref = prepare_auspicios_row(clean)
 
-    assert row == {"mes_num": 1, "mes_nombre": "Enero", "auspiciador": "Adidas"}
+    # "Adidas" -> "ADIDAS": normalizado a mayúsculas para no duplicar la
+    # misma marca por distinta capitalización entre archivos/filas.
+    assert row == {"mes_num": 1, "mes_nombre": "Enero", "auspiciador": "ADIDAS"}
     assert ref.nombre == "Hablando Huevadas"
     assert ref.canal == "Latina"
     assert ref.authoritative is False
