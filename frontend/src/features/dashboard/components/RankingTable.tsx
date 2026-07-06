@@ -4,12 +4,16 @@ import type { ProgramaRankingItem } from "@/features/dashboard/types";
 
 interface RankingTableProps {
   items: ProgramaRankingItem[];
+  onSelectPrograma?: (programa: string) => void;
+  selectedPrograma?: string;
 }
 
 /** Vista tabular accesible del ranking — alternativa al gráfico de barras
  * para lectores de pantalla (un SVG de Recharts no es navegable como tabla)
- * y para pantallas pequeñas donde 10 barras horizontales no caben bien. */
-export function RankingTable({ items }: RankingTableProps) {
+ * y para pantallas pequeñas donde 10 barras horizontales no caben bien.
+ * Cada fila es seleccionable (igual que hacer clic en una barra del
+ * gráfico): filtra todo el dashboard por ese programa. */
+export function RankingTable({ items, onSelectPrograma, selectedPrograma }: RankingTableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
@@ -37,7 +41,11 @@ export function RankingTable({ items }: RankingTableProps) {
           {items.map((item) => (
             <tr
               key={`${item.programa}-${item.canal}`}
-              className="border-b border-neutral-100 dark:border-neutral-800/60"
+              onClick={onSelectPrograma ? () => onSelectPrograma(item.programa) : undefined}
+              aria-selected={item.programa === selectedPrograma}
+              className={`border-b border-neutral-100 dark:border-neutral-800/60 ${
+                onSelectPrograma ? "cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800/60" : ""
+              } ${item.programa === selectedPrograma ? "bg-blue-50 dark:bg-blue-950/40" : ""}`}
             >
               <td className="py-2 pr-2 text-neutral-500 dark:text-neutral-400">{item.ranking}</td>
               <td className="py-2 pr-2 font-medium text-neutral-900 dark:text-neutral-100">

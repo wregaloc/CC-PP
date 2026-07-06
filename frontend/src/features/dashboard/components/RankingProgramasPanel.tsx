@@ -31,7 +31,7 @@ const FORMATO_TABS: { value: Formato | ""; label: string }[] = [
  * y buscador de programas integrado. El buscador filtra en el cliente sobre
  * el conjunto ya traído (la API no expone un parámetro de búsqueda de texto). */
 export function RankingProgramasPanel() {
-  const { filters } = useDashboardFilters();
+  const { filters, setPrograma } = useDashboardFilters();
   const [formato, setFormato] = useState<Formato | "">("");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<ViewMode>("grafico");
@@ -76,12 +76,21 @@ export function RankingProgramasPanel() {
         </div>
       }
     >
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        Haz clic en un programa (barra o fila) para filtrar todo el dashboard por él.
+      </p>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <TextField
           label="Buscar programa"
-          placeholder="Escribe el nombre de un programa…"
+          placeholder="Escribe el nombre de un programa y presiona Enter…"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && filtered.length === 1) {
+              setPrograma(filtered[0].programa);
+            }
+          }}
         />
 
         <div className="flex items-center gap-4">
@@ -146,16 +155,22 @@ export function RankingProgramasPanel() {
                   interval={0}
                 />
                 <Tooltip formatter={(value: number) => formatCompactNumber(value)} />
-                <Bar dataKey="vistas_totales" name="Vistas Totales" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="vistas_totales" name="Vistas Totales" radius={[0, 4, 4, 0]} cursor="pointer">
                   {chartData.map((entry) => (
-                    <Cell key={`${entry.programa}-${entry.canal}`} fill={colorForTipo(entry.tipo)} />
+                    <Cell
+                      key={`${entry.programa}-${entry.canal}`}
+                      fill={colorForTipo(entry.tipo)}
+                      stroke={filters.programa === entry.programa ? "#fff" : undefined}
+                      strokeWidth={filters.programa === entry.programa ? 2 : 0}
+                      onClick={() => setPrograma(entry.programa)}
+                    />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         ) : (
-          <RankingTable items={filtered} />
+          <RankingTable items={filtered} onSelectPrograma={setPrograma} selectedPrograma={filters.programa} />
         )}
       </QueryState>
     </DashboardCard>
