@@ -11,7 +11,8 @@ import { MESES, mesFromFechaInicio } from "@/features/dashboard/lib/mes";
 
 const CHIP_LIST_CLASS = "flex flex-wrap gap-2";
 const CHIP_CLASS =
-  "rounded-full bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200";
+  "rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-sm font-medium text-neutral-800 " +
+  "dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200";
 
 /**
  * Panel AUSPICIOS — Doc-Migración §5.1: "muestra la lista de marcas
@@ -91,11 +92,14 @@ export function AuspiciosPanel() {
           )}
 
           {query.data && !mes && (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800">
               {gruposPorMes.map((grupo) => (
-                <div key={grupo.mesNum} className="flex flex-col gap-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                <div key={grupo.mesNum} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+                  <h4 className="flex items-baseline gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
                     {MESES[grupo.mesNum - 1]}
+                    <span className="font-normal normal-case text-neutral-400 dark:text-neutral-500">
+                      · {grupo.marcas.length} marca{grupo.marcas.length === 1 ? "" : "s"}
+                    </span>
                   </h4>
                   <ul className={CHIP_LIST_CLASS}>
                     {grupo.marcas.map((marca) => (
