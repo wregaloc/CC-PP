@@ -8,13 +8,18 @@ export const TIPO_COLOR: Record<ProgramType, string> = {
   programa: "#6b7280",
 };
 
-export const TIPO_COLOR_DEFAULT = "#2563eb";
-
+/** Programas con `tipo` nulo en el dato de origen (columna "Tipo" vacía en
+ * DATA.csv, ver decisión con el usuario) se tratan como "Programa" para
+ * color y etiqueta — no como una categoría aparte. */
 export function colorForTipo(tipo: ProgramType | null): string {
-  return tipo ? TIPO_COLOR[tipo] : TIPO_COLOR_DEFAULT;
+  return TIPO_COLOR[tipo ?? "programa"];
 }
 
 export const TIPO_LABEL: Record<ProgramType, string> = {
   podcast: "Podcast",
   programa: "Programa",
 };
+
+export function labelForTipo(tipo: ProgramType | null): string {
+  return TIPO_LABEL[tipo ?? "programa"];
+}

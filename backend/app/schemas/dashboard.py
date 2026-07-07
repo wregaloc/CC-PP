@@ -48,6 +48,8 @@ class SentimentKpisResponse(BaseModel):
 
 class AuspicioOut(BaseModel):
     auspiciador: str
+    mes_num: int
+    mes_nombre: str
 
 
 class EvolutivoPoint(BaseModel):

@@ -93,19 +93,26 @@ async def get_sentiment_kpis(
     }
 
 
-async def get_auspicios(session: AsyncSession, programa: str | None, mes: int | None) -> list[str]:
-    """TDD §8.3 /dashboard/auspicios — lista de auspiciador (marcas), sin duplicados."""
-    stmt = select(Auspicio.auspiciador).distinct()
+async def get_auspicios(
+    session: AsyncSession, programa: str | None, mes: int | None
+) -> list[dict[str, Any]]:
+    """TDD §8.3 /dashboard/auspicios — lista de (auspiciador, mes), sin duplicados. Incluye
+    mes_num/mes_nombre para que el frontend pueda agrupar por mes cuando no se filtra un mes
+    específico (ver aprobación: agrupar auspiciadores por mes en el panel de Auspicios)."""
+    stmt = select(Auspicio.auspiciador, Auspicio.mes_num, Auspicio.mes_nombre).distinct()
     if programa is not None:
         stmt = stmt.join(Programa, Auspicio.programa_id == Programa.id).where(
             Programa.nombre == programa
         )
     if mes is not None:
         stmt = stmt.where(Auspicio.mes_num == mes)
-    stmt = stmt.order_by(Auspicio.auspiciador)
+    stmt = stmt.order_by(Auspicio.mes_num, Auspicio.auspiciador)
 
     result = await session.execute(stmt)
-    return list(result.scalars().all())
+    return [
+        {"auspiciador": row.auspiciador, "mes_num": row.mes_num, "mes_nombre": row.mes_nombre}
+        for row in result
+    ]
 
 
 async def get_evolutivo(

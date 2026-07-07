@@ -1,5 +1,5 @@
 import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
-import { TIPO_LABEL } from "@/features/dashboard/lib/tipoColors";
+import { labelForTipo } from "@/features/dashboard/lib/tipoColors";
 import type { ProgramaRankingItem } from "@/features/dashboard/types";
 
 interface RankingTableProps {
@@ -53,7 +53,7 @@ export function RankingTable({ items, onSelectPrograma, selectedPrograma }: Rank
               </td>
               <td className="py-2 pr-2 text-neutral-600 dark:text-neutral-400">{item.canal}</td>
               <td className="py-2 pr-2 text-neutral-600 dark:text-neutral-400">
-                {item.tipo ? TIPO_LABEL[item.tipo] : "—"}
+                {labelForTipo(item.tipo)}
               </td>
               <td className="py-2 text-right text-neutral-900 dark:text-neutral-100">
                 {formatCompactNumber(item.vistas_totales)}

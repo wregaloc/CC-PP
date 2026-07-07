@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { Alert } from "@/components/ui/Alert";
 import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -6,6 +8,10 @@ import { useAuspicios } from "@/features/dashboard/hooks/useAuspicios";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
 import { MESES, mesFromFechaInicio } from "@/features/dashboard/lib/mes";
+
+const CHIP_LIST_CLASS = "flex flex-wrap gap-2";
+const CHIP_CLASS =
+  "rounded-full bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200";
 
 /**
  * Panel AUSPICIOS — Doc-Migración §5.1: "muestra la lista de marcas
@@ -18,6 +24,9 @@ import { MESES, mesFromFechaInicio } from "@/features/dashboard/lib/mes";
  * es un KPI de contexto, es ruido. Por eso este panel solo consulta y
  * muestra datos cuando hay un `programa` elegido en la barra de filtros;
  * sin programa, invita explícitamente a elegir uno en vez de listar todo.
+ * Cuando no hay un mes específico en el filtro de fecha, se agrupa por mes
+ * (marzo, abril, ...) en vez de mostrar una sola lista mezclada — así se ve
+ * en qué meses auspició cada marca.
  */
 export function AuspiciosPanel() {
   const { filters } = useDashboardFilters();
@@ -26,6 +35,19 @@ export function AuspiciosPanel() {
   const query = useAuspicios({ programa: filters.programa, mes }, hasPrograma);
 
   const contexto = mes ? `${filters.programa} en ${MESES[mes - 1]}` : `${filters.programa}`;
+
+  const gruposPorMes = useMemo(() => {
+    if (mes || !query.data) return [];
+    const porMes = new Map<number, string[]>();
+    for (const auspicio of query.data) {
+      const marcas = porMes.get(auspicio.mes_num) ?? [];
+      marcas.push(auspicio.auspiciador);
+      porMes.set(auspicio.mes_num, marcas);
+    }
+    return [...porMes.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([mesNum, marcas]) => ({ mesNum, marcas }));
+  }, [mes, query.data]);
 
   return (
     <DashboardCard title="Auspicios">
@@ -46,7 +68,7 @@ export function AuspiciosPanel() {
             </div>
           }
         >
-          {query.data && (
+          {query.data && mes && (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col items-center gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-4 py-5
                 dark:border-neutral-800 dark:bg-neutral-950">
@@ -58,17 +80,32 @@ export function AuspiciosPanel() {
                 </span>
               </div>
 
-              <ul className="flex flex-wrap gap-2">
+              <ul className={CHIP_LIST_CLASS}>
                 {query.data.map((auspicio) => (
-                  <li
-                    key={auspicio.auspiciador}
-                    className="rounded-full bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-800
-                      dark:bg-neutral-800 dark:text-neutral-200"
-                  >
+                  <li key={auspicio.auspiciador} className={CHIP_CLASS}>
                     {auspicio.auspiciador}
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {query.data && !mes && (
+            <div className="flex flex-col gap-4">
+              {gruposPorMes.map((grupo) => (
+                <div key={grupo.mesNum} className="flex flex-col gap-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                    {MESES[grupo.mesNum - 1]}
+                  </h4>
+                  <ul className={CHIP_LIST_CLASS}>
+                    {grupo.marcas.map((marca) => (
+                      <li key={marca} className={CHIP_CLASS}>
+                        {marca}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           )}
         </QueryState>

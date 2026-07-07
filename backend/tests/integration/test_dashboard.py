@@ -175,7 +175,7 @@ async def test_auspicios_lists_sponsors_for_programa(
     )
 
     assert response.status_code == 200
-    assert response.json() == [{"auspiciador": "MarcaX"}]
+    assert response.json() == [{"auspiciador": "MarcaX", "mes_num": 1, "mes_nombre": "Enero"}]
 
 
 async def test_evolutivo_groups_by_dia(client: httpx.AsyncClient, seeded: dict) -> None:

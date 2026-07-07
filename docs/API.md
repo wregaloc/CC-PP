@@ -188,7 +188,7 @@ Parámetro común a casi todos: `?fecha_inicio&fecha_fin` (ambos opcionales; `42
 `?fecha_inicio&fecha_fin&programa` → `{pct_positivo, pct_negativo, pct_neutral}` (fracciones 0-1). `fact_sentimiento` solo tiene grano (año, mes) — el rango de fechas se aplica sobre el primer día de cada mes.
 
 ### GET /dashboard/auspicios
-`?programa&mes` → `[{auspiciador}]`, sin duplicados. Nota: el contrato del TDD no incluye `anio` para este endpoint (se sigue literalmente).
+`?programa&mes` → `[{auspiciador, mes_num, mes_nombre}]`, sin duplicados (una fila por auspiciador+mes). `mes_num`/`mes_nombre` se agregaron para que el frontend pueda agrupar auspiciadores por mes cuando no se filtra un mes específico (antes solo se devolvía `auspiciador`). Nota: el contrato del TDD no incluye `anio` para este endpoint (se sigue literalmente).
 
 ### GET /dashboard/evolutivo
 `?fecha_inicio&fecha_fin&granularidad={anio|mes|semana|dia}&metrica_secundaria={emisiones|busquedas}&programa&canal` → `[{periodo, vistas_totales, metrica_secundaria}]`. Reemplaza la medida DAX "KPI Vistas Promedio Dinámico" (que el propio TDD marcó como lógica frágil, basada en `CONTAINSSTRING` sobre texto) por un switch explícito sobre un enum — agrupa siempre por columnas ya materializadas en el ETL (`anio`/`mes_num`/`semana_num`), nunca recalculando fecha en SQL. Formato de `periodo`: `dia`→`YYYY-MM-DD`, `semana`→`YYYY-Wnn`, `mes`→`YYYY-MM`, `anio`→`YYYY`.

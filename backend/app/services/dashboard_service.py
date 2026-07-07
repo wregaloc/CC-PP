@@ -42,8 +42,8 @@ async def get_sentiment_kpis(
 async def get_auspicios(
     session: AsyncSession, programa: str | None, mes: int | None
 ) -> list[AuspicioOut]:
-    nombres = await dashboard_repository.get_auspicios(session, programa, mes)
-    return [AuspicioOut(auspiciador=nombre) for nombre in nombres]
+    rows = await dashboard_repository.get_auspicios(session, programa, mes)
+    return [AuspicioOut(**row) for row in rows]
 
 
 async def get_evolutivo(

@@ -31,6 +31,8 @@ export interface SentimentKpisResponse {
 
 export interface AuspicioOut {
   auspiciador: string;
+  mes_num: number;
+  mes_nombre: string;
 }
 
 export interface EvolutivoPoint {
