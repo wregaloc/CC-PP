@@ -16,13 +16,13 @@ const MAX_BARS_SHOWN = 10;
 type ViewMode = "grafico" | "tabla";
 
 // Valores reales de DATA[Formato] confirmados por el usuario: Grabado, Vivo,
-// Finalizado (no se asume agrupación entre ellos — se muestran los 3 tal
-// cual están en el dato, ver conversación de aprobación).
+// Finalizado (no se asume agrupación entre ellos — se muestran tal cual
+// están en el dato, ver conversación de aprobación). El tab "Finalizado" se
+// quitó de la UI a pedido del usuario; "Todos" sigue incluyendo esas filas.
 const FORMATO_TABS: { value: Formato | ""; label: string }[] = [
   { value: "", label: "Todos" },
   { value: "Grabado", label: "Grabado" },
   { value: "Vivo", label: "Vivo" },
-  { value: "Finalizado", label: "Finalizado" },
 ];
 
 // Exploratorio (a pedido del usuario, "solo para ver cómo queda"): filtro

@@ -13,7 +13,12 @@ export function EvolutivoChart() {
   const { filters } = useDashboardFilters();
   const query = useEvolutivo({ ...filters, granularidad: "mes", metrica_secundaria: "emisiones" });
 
-  const anio = query.data?.[0]?.periodo.slice(0, 4);
+  // El año en el título solo tiene sentido si TODOS los puntos son del mismo
+  // año — con datos mixtos 2025+2026 (p. ej. sin fechas seleccionadas) se
+  // usaba el año del primer punto nada más, mostrando "2025" aunque hubiera
+  // meses de 2026 en el mismo gráfico.
+  const aniosEnRango = new Set(query.data?.map((punto) => punto.periodo.slice(0, 4)));
+  const anio = aniosEnRango.size === 1 ? [...aniosEnRango][0] : undefined;
   const title = anio ? `Evolutivo Vistas ${anio}` : "Evolutivo Vistas";
 
   return (
