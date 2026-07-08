@@ -7,7 +7,7 @@ import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useAuspicios } from "@/features/dashboard/hooks/useAuspicios";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
-import { MESES, mesFromFechaInicio } from "@/features/dashboard/lib/mes";
+import { MESES, mesesFromRango } from "@/features/dashboard/lib/mes";
 
 const CHIP_LIST_CLASS = "flex flex-wrap gap-2";
 const CHIP_CLASS =
@@ -17,30 +17,41 @@ const CHIP_CLASS =
 /**
  * Panel AUSPICIOS — Doc-Migración §5.1: "muestra la lista de marcas
  * auspiciadoras filtradas por el contexto actual (programa/canal/mes)".
- * El endpoint ya acepta `mes` como filtro — se deriva del "Desde" de la
- * barra de filtros compartida en vez de agregar un selector de mes propio,
- * para no duplicar controles de fecha en la UI.
+ * El endpoint solo acepta un único `mes` — cuando el rango del date picker
+ * cubre varios meses (p. ej. abril-mayo), se pide sin filtro de mes (todo
+ * el histórico del programa) y se recorta en el cliente a los meses del
+ * rango usando `mes_num` (ya viene en la respuesta), agrupando cada mes por
+ * separado en vez de mezclarlos en una sola lista.
  * Sin un programa seleccionado, el endpoint devolvería todos los
  * auspiciadores del dataset completo (cientos de marcas) — una lista así no
  * es un KPI de contexto, es ruido. Por eso este panel solo consulta y
  * muestra datos cuando hay un `programa` elegido en la barra de filtros;
  * sin programa, invita explícitamente a elegir uno en vez de listar todo.
- * Cuando no hay un mes específico en el filtro de fecha, se agrupa por mes
- * (marzo, abril, ...) en vez de mostrar una sola lista mezclada — así se ve
- * en qué meses auspició cada marca.
  */
 export function AuspiciosPanel() {
   const { filters } = useDashboardFilters();
   const hasPrograma = Boolean(filters.programa);
-  const mes = mesFromFechaInicio(filters.fecha_inicio);
-  const query = useAuspicios({ programa: filters.programa, mes }, hasPrograma);
+  const meses = mesesFromRango(filters.fecha_inicio, filters.fecha_fin);
+  const singleMes = meses.length === 1 ? meses[0] : undefined;
 
-  const contexto = mes ? `${filters.programa} en ${MESES[mes - 1]}` : `${filters.programa}`;
+  const query = useAuspicios({ programa: filters.programa, mes: singleMes }, hasPrograma);
+
+  const datosEnRango = useMemo(() => {
+    const data = query.data ?? [];
+    if (meses.length <= 1) return data;
+    return data.filter((auspicio) => meses.includes(auspicio.mes_num));
+  }, [query.data, meses]);
+
+  const contexto = singleMes
+    ? `${filters.programa} en ${MESES[singleMes - 1]}`
+    : meses.length > 1
+      ? `${filters.programa} entre ${MESES[meses[0] - 1]} y ${MESES[meses[meses.length - 1] - 1]}`
+      : `${filters.programa}`;
 
   const gruposPorMes = useMemo(() => {
-    if (mes || !query.data) return [];
+    if (singleMes) return [];
     const porMes = new Map<number, string[]>();
-    for (const auspicio of query.data) {
+    for (const auspicio of datosEnRango) {
       const marcas = porMes.get(auspicio.mes_num) ?? [];
       marcas.push(auspicio.auspiciador);
       porMes.set(auspicio.mes_num, marcas);
@@ -48,7 +59,7 @@ export function AuspiciosPanel() {
     return [...porMes.entries()]
       .sort(([a], [b]) => a - b)
       .map(([mesNum, marcas]) => ({ mesNum, marcas }));
-  }, [mes, query.data]);
+  }, [singleMes, datosEnRango]);
 
   return (
     <DashboardCard title="Auspicios">
@@ -59,7 +70,7 @@ export function AuspiciosPanel() {
           isLoading={query.isLoading}
           isError={query.isError}
           error={query.error}
-          isEmpty={query.data?.length === 0}
+          isEmpty={datosEnRango.length === 0}
           emptyMessage={`${contexto} no tiene auspiciadores registrados.`}
           onRetry={query.refetch}
           loadingFallback={
@@ -69,20 +80,20 @@ export function AuspiciosPanel() {
             </div>
           }
         >
-          {query.data && mes && (
+          {singleMes && (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col items-center gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-4 py-5
                 dark:border-neutral-800 dark:bg-neutral-950">
                 <span className="text-4xl font-bold text-neutral-900 dark:text-neutral-100">
-                  {formatCompactNumber(query.data.length)}
+                  {formatCompactNumber(datosEnRango.length)}
                 </span>
                 <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                  auspiciador{query.data.length === 1 ? "" : "es"} de {contexto}
+                  auspiciador{datosEnRango.length === 1 ? "" : "es"} de {contexto}
                 </span>
               </div>
 
               <ul className={CHIP_LIST_CLASS}>
-                {query.data.map((auspicio) => (
+                {datosEnRango.map((auspicio) => (
                   <li key={auspicio.auspiciador} className={CHIP_CLASS}>
                     {auspicio.auspiciador}
                   </li>
@@ -91,7 +102,7 @@ export function AuspiciosPanel() {
             </div>
           )}
 
-          {query.data && !mes && (
+          {!singleMes && (
             <div className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800">
               {gruposPorMes.map((grupo) => (
                 <div key={grupo.mesNum} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">

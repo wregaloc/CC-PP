@@ -1,6 +1,7 @@
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useFilterCanales, useFilterPeriodos, useFilterProgramas } from "@/features/dashboard/hooks/useFilterOptions";
 import { Button } from "@/components/ui/Button";
+import { DateRangePicker } from "@/components/ui/DateRangePicker";
 
 function toUndefined(value: string): string | undefined {
   return value === "" ? undefined : value;
@@ -27,37 +28,16 @@ export function FilterBar() {
       className="flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-4
         shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
     >
-      <div className="flex flex-col gap-1">
-        <label htmlFor="filtro-fecha-inicio" className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-          Desde
-        </label>
-        <input
-          id="filtro-fecha-inicio"
-          type="date"
-          value={filters.fecha_inicio ?? ""}
-          min={periodosQuery.data?.fecha_min ?? undefined}
-          max={periodosQuery.data?.fecha_max ?? undefined}
-          onChange={(event) => setFechaInicio(toUndefined(event.target.value))}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900
-            dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-        />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="filtro-fecha-fin" className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-          Hasta
-        </label>
-        <input
-          id="filtro-fecha-fin"
-          type="date"
-          value={filters.fecha_fin ?? ""}
-          min={periodosQuery.data?.fecha_min ?? undefined}
-          max={periodosQuery.data?.fecha_max ?? undefined}
-          onChange={(event) => setFechaFin(toUndefined(event.target.value))}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900
-            dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-        />
-      </div>
+      <DateRangePicker
+        label="Rango de fechas"
+        value={{ from: filters.fecha_inicio, to: filters.fecha_fin }}
+        min={periodosQuery.data?.fecha_min ?? undefined}
+        max={periodosQuery.data?.fecha_max ?? undefined}
+        onChange={(range) => {
+          setFechaInicio(range.from);
+          setFechaFin(range.to);
+        }}
+      />
 
       <div className="flex flex-col gap-1">
         <label htmlFor="filtro-programa" className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
