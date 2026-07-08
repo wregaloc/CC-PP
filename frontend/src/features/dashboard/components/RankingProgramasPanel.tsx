@@ -8,9 +8,9 @@ import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { RankingTable } from "@/features/dashboard/components/RankingTable";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useRankingProgramas } from "@/features/dashboard/hooks/useRankingProgramas";
-import { colorForTipo, TIPO_COLOR, TIPO_LABEL } from "@/features/dashboard/lib/tipoColors";
+import { colorForTipo, TIPO_COLOR } from "@/features/dashboard/lib/tipoColors";
 import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
-import type { Formato } from "@/features/dashboard/types";
+import type { Formato, ProgramType } from "@/features/dashboard/types";
 
 const MAX_BARS_SHOWN = 10;
 type ViewMode = "grafico" | "tabla";
@@ -25,6 +25,16 @@ const FORMATO_TABS: { value: Formato | ""; label: string }[] = [
   { value: "Finalizado", label: "Finalizado" },
 ];
 
+// Exploratorio (a pedido del usuario, "solo para ver cómo queda"): filtro
+// excluyente por tipo, alternativo al coloreado simultáneo ya aprobado
+// (Propuesta 1). El endpoint ya soportaba `tipo` desde antes de esa
+// propuesta, así que no requiere cambios de contrato.
+const TIPO_TABS: { value: ProgramType | ""; label: string }[] = [
+  { value: "", label: "Todos" },
+  { value: "podcast", label: "Podcast" },
+  { value: "programa", label: "Programa" },
+];
+
 /** Ranking horizontal PROGRAMAS + VISTAS TOTALES — Doc-Migración §5.1: cada
  * barra se colorea por `tipo` simultáneamente (no como filtro excluyente,
  * ver Propuesta 1 aprobada), con filtro por `formato` (Propuesta 2 aprobada)
@@ -33,6 +43,7 @@ const FORMATO_TABS: { value: Formato | ""; label: string }[] = [
 export function RankingProgramasPanel() {
   const { filters, setPrograma } = useDashboardFilters();
   const [formato, setFormato] = useState<Formato | "">("");
+  const [tipo, setTipo] = useState<ProgramType | "">("");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<ViewMode>("grafico");
 
@@ -41,6 +52,7 @@ export function RankingProgramasPanel() {
     fecha_fin: filters.fecha_fin,
     canal: filters.canal,
     formato: formato || undefined,
+    tipo: tipo || undefined,
     limit: 100,
   });
 
@@ -94,18 +106,31 @@ export function RankingProgramasPanel() {
         />
 
         <div className="flex items-center gap-4">
-          <ul className="flex gap-3 text-xs text-neutral-600 dark:text-neutral-400" aria-label="Leyenda de tipo">
-            {(Object.keys(TIPO_COLOR) as (keyof typeof TIPO_COLOR)[]).map((tipo) => (
-              <li key={tipo} className="flex items-center gap-1.5">
-                <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: TIPO_COLOR[tipo] }}
-                  aria-hidden="true"
-                />
-                {TIPO_LABEL[tipo]}
-              </li>
+          <div className="flex flex-wrap gap-1" role="tablist" aria-label="Filtrar por tipo">
+            {TIPO_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                role="tab"
+                aria-selected={tipo === tab.value}
+                onClick={() => setTipo(tab.value)}
+                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                  tipo === tab.value
+                    ? "bg-blue-600 text-white"
+                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                }`}
+              >
+                {tab.value && (
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: TIPO_COLOR[tab.value] }}
+                    aria-hidden="true"
+                  />
+                )}
+                {tab.label}
+              </button>
             ))}
-          </ul>
+          </div>
 
           <div className="flex gap-1" role="tablist" aria-label="Tipo de vista">
             {(["grafico", "tabla"] as const).map((mode) => (
