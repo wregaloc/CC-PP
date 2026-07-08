@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -6,6 +6,7 @@ import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useKeywords } from "@/features/dashboard/hooks/useKeywords";
 import { MESES, mesFromFechaInicio } from "@/features/dashboard/lib/mes";
+import { layoutWordCloud } from "@/features/dashboard/lib/wordCloudLayout";
 import type { SentimientoFiltro } from "@/features/dashboard/types";
 
 const SENTIMIENTO_TABS: { value: SentimientoFiltro; label: string }[] = [
@@ -21,35 +22,70 @@ const SENTIMIENTO_COLOR: Record<string, string> = {
   neutral: "text-neutral-500 dark:text-neutral-400",
 };
 
-const MIN_FONT_REM = 0.8;
-const MAX_FONT_REM = 2.2;
+const CLOUD_HEIGHT_PX = 288;
+
+/** Mide el ancho disponible del contenedor con ResizeObserver — el layout de
+ * la nube necesita píxeles reales (no solo CSS) para calcular colisiones.
+ * Usa un callback ref (no `useRef` + efecto de una sola vez): el div real se
+ * monta recién cuando QueryState deja de mostrar el Skeleton de carga, así
+ * que un efecto con `[]` que lea `ref.current` al montar el componente
+ * llegaría demasiado temprano y nunca detectaría el nodo. */
+function useContainerWidth<T extends HTMLElement>() {
+  const [node, setNode] = useState<T | null>(null);
+  const [width, setWidth] = useState(0);
+  const ref = useCallback((el: T | null) => setNode(el), []);
+
+  useEffect(() => {
+    if (!node) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setWidth(entry.contentRect.width);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [node]);
+
+  return [ref, width] as const;
+}
 
 /**
  * Nube de palabras "SENTIMENT DE [PROGRAMA]" — Doc-Migración §5.1: KEYWORDS
  * ponderadas por occurrences, coloreadas por sentimiento, con filtro por
  * sentimiento. Recharts no tiene un primitivo de nube de palabras — se
- * implementa como una lista de etiquetas HTML con tamaño proporcional
- * (enfoque estándar para este tipo de visual, evita una dependencia nueva
- * solo para un widget).
+ * implementa a mano con el mismo algoritmo que usan wordcloud2.js/d3-cloud
+ * (espiral + detección de colisiones, ver lib/wordCloudLayout.ts) en vez de
+ * agregar una librería nueva solo para este widget.
  */
 export function KeywordsCloud() {
   const { filters } = useDashboardFilters();
   const [sentimiento, setSentimiento] = useState<SentimientoFiltro>("todos");
   const mes = mesFromFechaInicio(filters.fecha_inicio);
+  const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>();
 
   const query = useKeywords({ programa: filters.programa, mes, sentimiento, limit: 60 });
 
-  const sized = useMemo(() => {
+  const placedWords = useMemo(() => {
     const data = query.data ?? [];
-    if (data.length === 0) return [];
-    const max = Math.max(...data.map((k) => k.occurrences));
-    const min = Math.min(...data.map((k) => k.occurrences));
-    const range = max - min || 1;
-    return data.map((keyword) => ({
-      ...keyword,
-      fontSize: MIN_FONT_REM + ((keyword.occurrences - min) / range) * (MAX_FONT_REM - MIN_FONT_REM),
-    }));
-  }, [query.data]);
+    if (data.length === 0 || containerWidth === 0) return [];
+
+    // Quitar el "#" puede colapsar dos hashtags que en el dato de origen son
+    // distintos (p. ej. "palabra" y "#palabra") en el mismo texto visible —
+    // se re-agrupan por (texto, sentimiento) sumando occurrences para nunca
+    // terminar con dos entradas de la misma key (eso rompía el render al
+    // cambiar de tab, ver commit de agregación en el backend).
+    const merged = new Map<string, { hashtag: string; sentimiento: string; occurrences: number }>();
+    for (const k of data) {
+      const hashtag = k.hashtag.replace(/^#+/, "");
+      const key = `${hashtag}-${k.sentimiento}`;
+      const existing = merged.get(key);
+      if (existing) {
+        existing.occurrences += k.occurrences;
+      } else {
+        merged.set(key, { hashtag, sentimiento: k.sentimiento, occurrences: k.occurrences });
+      }
+    }
+
+    return layoutWordCloud([...merged.values()], containerWidth, CLOUD_HEIGHT_PX);
+  }, [query.data, containerWidth]);
 
   const contexto = filters.programa
     ? mes
@@ -86,27 +122,41 @@ export function KeywordsCloud() {
         isLoading={query.isLoading}
         isError={query.isError}
         error={query.error}
-        isEmpty={sized.length === 0}
+        isEmpty={placedWords.length === 0 && (query.data?.length ?? 0) === 0}
         emptyMessage="No hay keywords para este filtro."
         onRetry={query.refetch}
-        loadingFallback={<Skeleton className="h-48 w-full" />}
+        loadingFallback={<Skeleton className="h-[18rem] w-full" />}
       >
-        <ul
-          className="flex min-h-[12rem] flex-wrap items-center justify-center gap-x-3 gap-y-1 p-2"
+        <div
+          key={sentimiento}
+          ref={containerRef}
+          className="relative w-full overflow-hidden"
+          style={{ height: CLOUD_HEIGHT_PX }}
           aria-label="Nube de palabras clave"
+          role="img"
         >
-          {sized.map((keyword) => (
-            <li key={`${keyword.hashtag}-${keyword.sentimiento}`}>
+          {placedWords.map((word) => (
+            <span
+              key={`${word.hashtag}-${word.sentimiento}`}
+              className="absolute hover:z-10"
+              style={{
+                left: `calc(50% + ${word.x}px)`,
+                top: `calc(50% + ${word.y}px)`,
+                transform: "translate(-50%, -50%)",
+              }}
+            >
               <span
-                className={`font-semibold leading-none ${SENTIMIENTO_COLOR[keyword.sentimiento]}`}
-                style={{ fontSize: `${keyword.fontSize}rem` }}
-                title={`${keyword.hashtag}: ${keyword.occurrences} menciones (${keyword.sentimiento})`}
+                className={`inline-block cursor-default whitespace-nowrap font-bold leading-none
+                  transition-transform duration-150 ease-out hover:scale-125
+                  ${SENTIMIENTO_COLOR[word.sentimiento]}`}
+                style={{ fontSize: `${word.fontSizePx}px` }}
+                title={`${word.hashtag}: ${word.occurrences} menciones (${word.sentimiento})`}
               >
-                {keyword.hashtag.replace(/^#+/, "")}
+                {word.hashtag}
               </span>
-            </li>
+            </span>
           ))}
-        </ul>
+        </div>
       </QueryState>
     </DashboardCard>
   );
