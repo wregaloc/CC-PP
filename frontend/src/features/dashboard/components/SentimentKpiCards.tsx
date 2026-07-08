@@ -37,16 +37,19 @@ export function SentimentKpiCards() {
               label="Positivo"
               value={formatPercent(query.data.pct_positivo)}
               description="SPLIT SENSE[Sentimiento Positivo]"
+              accent="positivo"
             />
             <KpiCard
               label="Negativo"
               value={formatPercent(query.data.pct_negativo)}
               description="SPLIT SENSE[Sentimiento Negativo]"
+              accent="negativo"
             />
             <KpiCard
               label="Neutral"
               value={formatPercent(query.data.pct_neutral)}
               description="SPLIT SENSE[Sentimiento Neutral]"
+              accent="neutral"
             />
           </div>
         )}

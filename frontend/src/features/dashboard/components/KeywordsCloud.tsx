@@ -102,7 +102,7 @@ export function KeywordsCloud() {
                 style={{ fontSize: `${keyword.fontSize}rem` }}
                 title={`${keyword.hashtag}: ${keyword.occurrences} menciones (${keyword.sentimiento})`}
               >
-                #{keyword.hashtag}
+                {keyword.hashtag.replace(/^#+/, "")}
               </span>
             </li>
           ))}

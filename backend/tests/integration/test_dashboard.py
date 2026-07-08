@@ -85,6 +85,10 @@ async def seeded(db_session: AsyncSession, make_user, make_programa):
                 anio=2030, mes_num=1, mes_nombre="Enero", programa_id=programa_a.id,
                 hashtag="menosvisto", occurrences=10, sentimiento=SentimentType.NEGATIVO,
             ),
+            FactKeywords(
+                anio=2030, mes_num=2, mes_nombre="Febrero", programa_id=programa_a.id,
+                hashtag="masvisto", occurrences=30, sentimiento=SentimentType.POSITIVO,
+            ),
         ]
     )
     db_session.add(
@@ -318,6 +322,11 @@ async def test_canal_live_stats(client: httpx.AsyncClient, seeded: dict) -> None
 async def test_keywords_filters_by_sentimiento_and_orders_by_occurrences(
     client: httpx.AsyncClient, seeded: dict
 ) -> None:
+    """"masvisto" tiene dos filas (Enero=50, Febrero=30) — sin filtro de mes
+    deben sumarse en una sola entrada (80), nunca devolverse como filas
+    duplicadas (ver regresión: fact_keywords tiene grano mensual, la nube de
+    palabras del frontend usaba hashtag+sentimiento como key de React y las
+    filas duplicadas rompían el render al cambiar de tab de sentimiento)."""
     token = await _login(client, "viewer@podpulse.pe", "Valida123")
 
     response = await client.get(
@@ -328,7 +337,7 @@ async def test_keywords_filters_by_sentimiento_and_orders_by_occurrences(
 
     assert response.status_code == 200
     body = response.json()
-    assert body == [{"hashtag": "masvisto", "occurrences": 50, "sentimiento": "positivo"}]
+    assert body == [{"hashtag": "masvisto", "occurrences": 80, "sentimiento": "positivo"}]
 
 
 async def test_keywords_todos_returns_every_sentimiento(

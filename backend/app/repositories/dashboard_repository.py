@@ -315,8 +315,15 @@ async def get_keywords(
     """TDD §8.6 /dashboard/keywords, ordenado por occurrences DESC (tamaño de
     palabra en la nube original — Doc-Migración §5.1: "ponderadas por
     KEYWORDS[OCCURRENCES]"). Sin filtro de año: el contrato del TDD solo define
-    `mes`, no `anio`, para este endpoint."""
-    stmt = select(FactKeywords.hashtag, FactKeywords.occurrences, FactKeywords.sentimiento)
+    `mes`, no `anio`, para este endpoint.
+
+    Agrupa por (hashtag, sentimiento) sumando occurrences: fact_keywords tiene
+    grano (hashtag, mes, search_id), así que sin esto el mismo hashtag salía
+    repetido una vez por mes (p. ej. sin filtro de mes) — además de inflar el
+    conteo visual, las filas duplicadas rompían la key de React en la nube de
+    palabras del frontend."""
+    occurrences_sum = func.sum(FactKeywords.occurrences).label("occurrences")
+    stmt = select(FactKeywords.hashtag, FactKeywords.sentimiento, occurrences_sum)
     if programa is not None:
         stmt = stmt.join(Programa, FactKeywords.programa_id == Programa.id).where(
             Programa.nombre == programa
@@ -325,7 +332,11 @@ async def get_keywords(
         stmt = stmt.where(FactKeywords.mes_num == mes)
     if sentimiento != SentimientoFiltro.TODOS:
         stmt = stmt.where(FactKeywords.sentimiento == SentimentType(sentimiento.value))
-    stmt = stmt.order_by(FactKeywords.occurrences.desc()).limit(limit)
+    stmt = (
+        stmt.group_by(FactKeywords.hashtag, FactKeywords.sentimiento)
+        .order_by(occurrences_sum.desc())
+        .limit(limit)
+    )
 
     result = await session.execute(stmt)
     return [
