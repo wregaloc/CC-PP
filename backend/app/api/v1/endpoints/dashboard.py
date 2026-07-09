@@ -1,4 +1,7 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Query
+from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies.auth import require_authenticated
@@ -186,7 +189,9 @@ async def get_canal_live_stats(
 )
 async def get_keywords(
     programa: str | None = Query(default=None, description="Nombre exacto del programa"),
-    mes: int | None = Query(default=None, ge=1, le=12),
+    mes: list[Annotated[int, Field(ge=1, le=12)]] | None = Query(
+        default=None, description="Uno o más meses (?mes=4&mes=5)"
+    ),
     sentimiento: SentimientoFiltro = Query(default=SentimientoFiltro.TODOS),
     limit: int = Query(default=100, ge=1, le=500),
     user: User = Depends(require_authenticated),

@@ -169,6 +169,28 @@ async def test_sentiment_kpis(client: httpx.AsyncClient, seeded: dict) -> None:
     assert body["pct_neutral"] == pytest.approx(0.2)
 
 
+async def test_sentiment_kpis_includes_month_on_partial_range(
+    client: httpx.AsyncClient, seeded: dict
+) -> None:
+    """El dato sembrado es de enero 2030 (mes_num=1). Un rango parcial que no
+    incluye el día 1 del mes (10-20 de enero) debe seguir trayendo ese mes —
+    antes se comparaba solo contra el día 1, así que este rango lo excluía
+    por completo y devolvía None en los tres porcentajes."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/sentiment-kpis",
+        headers=_auth(token),
+        params={"programa": "TEST_A", "fecha_inicio": "2030-01-10", "fecha_fin": "2030-01-20"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["pct_positivo"] == pytest.approx(0.5)
+    assert body["pct_negativo"] == pytest.approx(0.3)
+    assert body["pct_neutral"] == pytest.approx(0.2)
+
+
 async def test_auspicios_lists_sponsors_for_programa(
     client: httpx.AsyncClient, seeded: dict
 ) -> None:
@@ -338,6 +360,30 @@ async def test_keywords_filters_by_sentimiento_and_orders_by_occurrences(
     assert response.status_code == 200
     body = response.json()
     assert body == [{"hashtag": "masvisto", "occurrences": 80, "sentimiento": "positivo"}]
+
+
+async def test_keywords_filters_by_multiple_meses(client: httpx.AsyncClient, seeded: dict) -> None:
+    """`mes` acepta varios valores (rango del date picker, p. ej. Enero+Febrero)
+    y suma occurrences del período combinado antes de sacar el top — no debe
+    devolver solo el resultado de uno de los meses."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    solo_enero = await client.get(
+        f"{DASHBOARD_URL}/keywords",
+        headers=_auth(token),
+        params={"programa": "TEST_A", "sentimiento": "positivo", "mes": 1},
+    )
+    assert solo_enero.json() == [{"hashtag": "masvisto", "occurrences": 50, "sentimiento": "positivo"}]
+
+    enero_y_febrero = await client.get(
+        f"{DASHBOARD_URL}/keywords",
+        headers=_auth(token),
+        params={"programa": "TEST_A", "sentimiento": "positivo", "mes": [1, 2]},
+    )
+    assert enero_y_febrero.status_code == 200
+    assert enero_y_febrero.json() == [
+        {"hashtag": "masvisto", "occurrences": 80, "sentimiento": "positivo"}
+    ]
 
 
 async def test_keywords_todos_returns_every_sentimiento(

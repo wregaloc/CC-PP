@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useKeywords } from "@/features/dashboard/hooks/useKeywords";
-import { MESES, mesFromFechaInicio } from "@/features/dashboard/lib/mes";
+import { MESES, mesesFromRango } from "@/features/dashboard/lib/mes";
 import { layoutWordCloud } from "@/features/dashboard/lib/wordCloudLayout";
 import type { SentimientoFiltro } from "@/features/dashboard/types";
 
@@ -58,10 +58,15 @@ function useContainerWidth<T extends HTMLElement>() {
 export function KeywordsCloud() {
   const { filters } = useDashboardFilters();
   const [sentimiento, setSentimiento] = useState<SentimientoFiltro>("todos");
-  const mes = mesFromFechaInicio(filters.fecha_inicio);
+  const meses = mesesFromRango(filters.fecha_inicio, filters.fecha_fin);
   const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>();
 
-  const query = useKeywords({ programa: filters.programa, mes, sentimiento, limit: 60 });
+  const query = useKeywords({
+    programa: filters.programa,
+    mes: meses.length > 0 ? meses : undefined,
+    sentimiento,
+    limit: 60,
+  });
 
   const placedWords = useMemo(() => {
     const data = query.data ?? [];
@@ -88,9 +93,11 @@ export function KeywordsCloud() {
   }, [query.data, containerWidth]);
 
   const contexto = filters.programa
-    ? mes
-      ? `${filters.programa} en ${MESES[mes - 1]}`
-      : filters.programa
+    ? meses.length === 1
+      ? `${filters.programa} en ${MESES[meses[0] - 1]}`
+      : meses.length > 1
+        ? `${filters.programa} entre ${MESES[meses[0] - 1]} y ${MESES[meses[meses.length - 1] - 1]}`
+        : filters.programa
     : null;
   const title = contexto ? `Sentiment de ${contexto}` : "Sentiment por Keywords";
 

@@ -9,7 +9,7 @@ functions) — nunca cargando filas a Python para sumar/promediar ahí.
 
 from typing import Any
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies.dashboard_filters import DateRangeParams
@@ -27,6 +27,23 @@ def _apply_date_range(stmt: Select, date_column: Any, filters: DateRangeParams) 
         stmt = stmt.where(date_column >= filters.fecha_inicio)
     if filters.fecha_fin is not None:
         stmt = stmt.where(date_column <= filters.fecha_fin)
+    return stmt
+
+
+def _apply_month_range_overlap(stmt: Select, month_start: Any, filters: DateRangeParams) -> Select:
+    """Para tablas con grano mensual (fact_sentimiento, un solo resumen por
+    mes, sin detalle diario): incluye el mes si se *solapa* con
+    [fecha_inicio, fecha_fin], no solo si el día 1 del mes cae exactamente
+    dentro del rango. Con `_apply_date_range` normal, un rango parcial dentro
+    de un mes (p. ej. 10-20 de abril, posible desde que el date picker deja
+    elegir cualquier día) excluía abril entero porque el día 1 quedaba antes
+    de "Desde" — acá se compara contra el último día del mes en vez de
+    exigir que el primer día esté dentro del rango."""
+    month_end = month_start.op("+")(text("interval '1 month - 1 day'"))
+    if filters.fecha_inicio is not None:
+        stmt = stmt.where(month_end >= filters.fecha_inicio)
+    if filters.fecha_fin is not None:
+        stmt = stmt.where(month_start <= filters.fecha_fin)
     return stmt
 
 
@@ -70,8 +87,9 @@ async def get_sentiment_kpis(
     """TDD §8.3 /dashboard/sentiment-kpis. Medidas DAX (tabla SPLIT SENSE):
     Sentimiento Positivo/Negativo/Neutral = AVERAGE(score).
 
-    fact_sentimiento solo tiene grano (año, mes) — el rango fecha_inicio/fecha_fin
-    se aplica sobre el primer día de cada mes (make_date(anio, mes_num, 1)).
+    fact_sentimiento solo tiene grano (año, mes) — un mes se incluye si se
+    solapa con [fecha_inicio, fecha_fin] (ver _apply_month_range_overlap),
+    no solo si el día 1 del mes cae exactamente dentro del rango.
     """
     month_start = func.make_date(FactSentimiento.anio, FactSentimiento.mes_num, 1)
     stmt = select(
@@ -83,7 +101,7 @@ async def get_sentiment_kpis(
         stmt = stmt.join(Programa, FactSentimiento.programa_id == Programa.id).where(
             Programa.nombre == programa
         )
-    stmt = _apply_date_range(stmt, month_start, filters)
+    stmt = _apply_month_range_overlap(stmt, month_start, filters)
 
     row = (await session.execute(stmt)).one()
     return {
@@ -308,7 +326,7 @@ async def get_canal_live_stats(
 async def get_keywords(
     session: AsyncSession,
     programa: str | None,
-    mes: int | None,
+    mes: list[int] | None,
     sentimiento: SentimientoFiltro,
     limit: int,
 ) -> list[dict[str, Any]]:
@@ -316,6 +334,11 @@ async def get_keywords(
     palabra en la nube original — Doc-Migración §5.1: "ponderadas por
     KEYWORDS[OCCURRENCES]"). Sin filtro de año: el contrato del TDD solo define
     `mes`, no `anio`, para este endpoint.
+
+    `mes` acepta una lista (p. ej. [4, 5] para abril+mayo, del rango del date
+    picker) en vez de un único mes — el filtro `IN` se aplica antes de
+    agrupar, así que el top por occurrences es el del período combinado, no
+    el de un solo mes del rango.
 
     Agrupa por (hashtag, sentimiento) sumando occurrences: fact_keywords tiene
     grano (hashtag, mes, search_id), así que sin esto el mismo hashtag salía
@@ -328,8 +351,8 @@ async def get_keywords(
         stmt = stmt.join(Programa, FactKeywords.programa_id == Programa.id).where(
             Programa.nombre == programa
         )
-    if mes is not None:
-        stmt = stmt.where(FactKeywords.mes_num == mes)
+    if mes:
+        stmt = stmt.where(FactKeywords.mes_num.in_(mes))
     if sentimiento != SentimientoFiltro.TODOS:
         stmt = stmt.where(FactKeywords.sentimiento == SentimentType(sentimiento.value))
     stmt = (

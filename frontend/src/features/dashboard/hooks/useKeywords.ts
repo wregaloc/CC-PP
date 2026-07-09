@@ -5,7 +5,7 @@ import type { SentimientoFiltro } from "@/features/dashboard/types";
 
 export function useKeywords(params: {
   programa?: string;
-  mes?: number;
+  mes?: number[];
   sentimiento?: SentimientoFiltro;
   limit?: number;
 }) {

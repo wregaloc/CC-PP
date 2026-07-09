@@ -185,7 +185,7 @@ Parámetro común a casi todos: `?fecha_inicio&fecha_fin` (ambos opcionales; `42
 `?fecha_inicio&fecha_fin&programa&canal` → `{vistas_totales, engagement_rate, likes, comentarios, emisiones}`. `engagement_rate` es una **fracción 0-1** (no un porcentaje ya multiplicado por 100) — mismo criterio que `score_positivo/negativo/neutral`. `emisiones` = `SUM(Es_Emision)` en el rango (medida DAX `Emisiones = SUM(Es_Emision)`) — `Es_Emision` es un conteo de emisiones por día (puede ser >1), no un booleano.
 
 ### GET /dashboard/sentiment-kpis
-`?fecha_inicio&fecha_fin&programa` → `{pct_positivo, pct_negativo, pct_neutral}` (fracciones 0-1). `fact_sentimiento` solo tiene grano (año, mes) — el rango de fechas se aplica sobre el primer día de cada mes.
+`?fecha_inicio&fecha_fin&programa` → `{pct_positivo, pct_negativo, pct_neutral}` (fracciones 0-1). `fact_sentimiento` solo tiene grano (año, mes) — un mes se incluye si se solapa con `[fecha_inicio, fecha_fin]` (no solo si el día 1 del mes cae dentro del rango), así que un rango parcial dentro de un mes (p. ej. 10-20 de abril) igual trae los datos de ese mes completo.
 
 ### GET /dashboard/auspicios
 `?programa&mes` → `[{auspiciador, mes_num, mes_nombre}]`, sin duplicados (una fila por auspiciador+mes). `mes_num`/`mes_nombre` se agregaron para que el frontend pueda agrupar auspiciadores por mes cuando no se filtra un mes específico (antes solo se devolvía `auspiciador`). Nota: el contrato del TDD no incluye `anio` para este endpoint (se sigue literalmente).
@@ -205,7 +205,7 @@ Parámetro común a casi todos: `?fecha_inicio&fecha_fin` (ambos opcionales; `42
 - **`promedio_vivo` = `AVG(promedio_vivo)`** — a diferencia de `pico_max`, la Doc-Migración **no** documenta una medida DAX explícita para este agregado (no está en la lista de 15 medidas de §4); solo aparece como una tarjeta de KPI sin fórmula. Se interpretó como `AVG` (promedio de un valor que ya es en sí mismo "audiencia promedio durante el vivo" por fila) porque sumar varios promedios diarios produciría una magnitud sin sentido de negocio. Si la intención original era otra (`SUM`, último valor, etc.), avisar para corregirlo — es un cambio de una línea en `dashboard_repository.py`.
 
 ### GET /dashboard/keywords
-`?programa&mes&sentimiento={positivo|negativo|neutral|todos}&limit=100` → `[{hashtag, occurrences, sentimiento}]`, ordenado por `occurrences` DESC (tamaño de palabra en la nube original). Sin filtro de año, igual que `/auspicios` — el contrato del TDD no lo incluye.
+`?programa&mes&sentimiento={positivo|negativo|neutral|todos}&limit=100` → `[{hashtag, occurrences, sentimiento}]`, ordenado por `occurrences` DESC (tamaño de palabra en la nube original). `mes` acepta uno o varios valores (`?mes=4&mes=5`) — con varios meses, `occurrences` es la suma del período combinado antes de sacar el top (no el top de un solo mes del rango). Sin filtro de año, igual que `/auspicios` — el contrato del TDD no lo incluye.
 
 ### GET /dashboard/sentimiento/evolutivo
 `?programa&fecha_inicio&fecha_fin` → `[{mes, pct_positivo, pct_negativo, pct_neutral}]`, un punto por mes (formato `YYYY-MM`).

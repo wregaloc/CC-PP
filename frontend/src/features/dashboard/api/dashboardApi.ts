@@ -62,10 +62,16 @@ export async function getRankingProgramas(params: {
 
 export async function getKeywords(params: {
   programa?: string;
-  mes?: number;
+  mes?: number[];
   sentimiento?: SentimientoFiltro;
   limit?: number;
 }): Promise<KeywordOut[]> {
-  const response = await httpClient.get<KeywordOut[]>("/dashboard/keywords", { params });
+  // Axios serializa arrays como "mes[]=4&mes[]=5" por defecto — FastAPI
+  // espera la clave repetida sin corchetes ("mes=4&mes=5") para un
+  // list[int] de Query params.
+  const response = await httpClient.get<KeywordOut[]>("/dashboard/keywords", {
+    params,
+    paramsSerializer: { indexes: null },
+  });
   return response.data;
 }

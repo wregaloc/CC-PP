@@ -98,7 +98,7 @@ async def get_canal_live_stats(
 async def get_keywords(
     session: AsyncSession,
     programa: str | None,
-    mes: int | None,
+    mes: list[int] | None,
     sentimiento: SentimientoFiltro,
     limit: int,
 ) -> list[KeywordOut]:
