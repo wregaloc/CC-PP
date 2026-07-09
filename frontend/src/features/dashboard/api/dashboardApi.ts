@@ -12,6 +12,7 @@ import type {
   ProgramaRankingItem,
   ProgramType,
   SentimentKpisResponse,
+  SentimientoEvolutivoPoint,
   SentimientoFiltro,
 } from "@/features/dashboard/types";
 
@@ -26,6 +27,16 @@ export async function getSentimentKpis(
   const response = await httpClient.get<SentimentKpisResponse>("/dashboard/sentiment-kpis", {
     params: filters,
   });
+  return response.data;
+}
+
+export async function getSentimientoEvolutivo(
+  params: Pick<DashboardFilters, "fecha_inicio" | "fecha_fin" | "programa">,
+): Promise<SentimientoEvolutivoPoint[]> {
+  const response = await httpClient.get<SentimientoEvolutivoPoint[]>(
+    "/dashboard/sentimiento/evolutivo",
+    { params },
+  );
   return response.data;
 }
 

@@ -413,3 +413,22 @@ async def test_sentimiento_evolutivo(client: httpx.AsyncClient, seeded: dict) ->
     assert body == [
         {"mes": "2030-01", "pct_positivo": 0.5, "pct_negativo": 0.3, "pct_neutral": 0.2}
     ]
+
+
+async def test_sentimiento_evolutivo_includes_month_on_partial_range(
+    client: httpx.AsyncClient, seeded: dict
+) -> None:
+    """Mismo caso que test_sentiment_kpis_includes_month_on_partial_range,
+    para el endpoint de evolutivo mensual."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/sentimiento/evolutivo",
+        headers=_auth(token),
+        params={"programa": "TEST_A", "fecha_inicio": "2030-01-10", "fecha_fin": "2030-01-20"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {"mes": "2030-01", "pct_positivo": 0.5, "pct_negativo": 0.3, "pct_neutral": 0.2}
+    ]

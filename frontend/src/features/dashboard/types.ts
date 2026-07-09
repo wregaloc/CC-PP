@@ -29,6 +29,13 @@ export interface SentimentKpisResponse {
   pct_neutral: number | null;
 }
 
+export interface SentimientoEvolutivoPoint {
+  mes: string;
+  pct_positivo: number | null;
+  pct_negativo: number | null;
+  pct_neutral: number | null;
+}
+
 export interface AuspicioOut {
   auspiciador: string;
   mes_num: number;

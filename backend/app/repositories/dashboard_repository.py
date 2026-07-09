@@ -372,7 +372,10 @@ async def get_sentimiento_evolutivo(
     session: AsyncSession, programa: str | None, filters: DateRangeParams
 ) -> list[dict[str, Any]]:
     """TDD §8.6 /dashboard/sentimiento/evolutivo — mismas medidas que
-    get_sentiment_kpis, agrupadas por mes en vez de un único promedio."""
+    get_sentiment_kpis, agrupadas por mes en vez de un único promedio.
+    Mismo criterio de solapamiento que get_sentiment_kpis (ver
+    _apply_month_range_overlap): un mes se incluye si se solapa con el
+    rango, no solo si su día 1 cae exactamente dentro."""
     month_start = func.make_date(FactSentimiento.anio, FactSentimiento.mes_num, 1)
     stmt = (
         select(
@@ -389,7 +392,7 @@ async def get_sentimiento_evolutivo(
         stmt = stmt.join(Programa, FactSentimiento.programa_id == Programa.id).where(
             Programa.nombre == programa
         )
-    stmt = _apply_date_range(stmt, month_start, filters)
+    stmt = _apply_month_range_overlap(stmt, month_start, filters)
 
     result = await session.execute(stmt)
     return [
