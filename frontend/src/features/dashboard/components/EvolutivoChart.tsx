@@ -1,4 +1,4 @@
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, LabelList } from "recharts";
 
 import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -33,10 +33,10 @@ export function EvolutivoChart() {
       >
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={query.data ?? []} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+            <LineChart data={query.data ?? []} margin={{ top: 24, right: 48, left: 48, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-200 dark:stroke-neutral-800" />
               <XAxis dataKey="periodo" tick={{ fontSize: 12 }} />
-              <YAxis tickFormatter={formatCompactNumber} tick={{ fontSize: 12 }} width={64} />
+              <YAxis hide />
               <Tooltip
                 formatter={(value: number) => formatCompactNumber(value)}
                 labelFormatter={(label) => `Periodo: ${label}`}
@@ -48,7 +48,15 @@ export function EvolutivoChart() {
                 stroke="#2563eb"
                 strokeWidth={2}
                 dot={{ r: 3 }}
-              />
+              >
+                <LabelList
+                  dataKey="vistas_totales"
+                  position="top"
+                  offset={10}
+                  formatter={(value: number) => formatCompactNumber(value)}
+                  className="fill-neutral-600 text-[10px] dark:fill-neutral-300"
+                />
+              </Line>
             </LineChart>
           </ResponsiveContainer>
         </div>
