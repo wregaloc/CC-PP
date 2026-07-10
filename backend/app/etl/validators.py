@@ -54,6 +54,14 @@ def _coerce(col: ColumnSpec, value: str) -> Any:
         if col.dtype == "int":
             return int(float(value))  # tolera "10.0" además de "10"
         if col.dtype == "float":
+            # DATA[Engagement] viene formateado como porcentaje ("1.56%") en el
+            # CSV de origen — se guarda como fracción 0-1 (0.0156), consistente
+            # con como el resto del sistema trata Engagement (KPIs, formatPercent
+            # en el frontend). Sin este strip, float("1.56%") lanza ValueError y
+            # la FILA ENTERA se rechazaba (no solo el campo), perdiendo también
+            # vistas/likes/comentarios válidos de esa fila.
+            if value.endswith("%"):
+                return float(value[:-1]) / 100
             return float(value)
         if col.dtype == "bool":
             return _coerce_bool(value)

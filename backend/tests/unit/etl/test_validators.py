@@ -48,6 +48,24 @@ def test_validate_row_happy_path_coerces_types() -> None:
     assert clean["Categoria"] == "Conversacional"
 
 
+def test_validate_row_engagement_percent_format_becomes_fraction() -> None:
+    """DATA[Engagement] viene formateado como "1.56%" en el CSV de origen —
+    antes de este fix, float("1.56%") lanzaba ValueError y rechazaba la FILA
+    ENTERA (no solo el campo), perdiendo también vistas/likes/comentarios
+    válidos de esa fila. Se guarda como fracción 0-1, no como 1.56."""
+    raw = {
+        "Fecha": "05/07/2026",
+        "Programa": "Hablando Huevadas",
+        "Vistas_Diarias": "1234",
+        "Es_Emision": "1",
+        "Engagement": "1.56%",
+    }
+
+    clean = validate_row(_SPEC, raw)
+
+    assert clean["Engagement"] == pytest.approx(0.0156)
+
+
 def test_validate_row_missing_required_raises() -> None:
     raw = {"Fecha": "05/07/2026", "Vistas_Diarias": "10", "Es_Emision": "1"}
 
