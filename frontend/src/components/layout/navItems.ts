@@ -10,6 +10,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Dashboard" },
+  { to: "/evolutivo-detallado", label: "Evolutivo Detallado" },
   { to: "/admin", label: "Administración", allowedRoles: ["admin"] },
 ];
 

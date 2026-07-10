@@ -64,6 +64,18 @@ export interface CanalRankingItem {
   ranking: number;
 }
 
+export interface CanalProgramaItem {
+  programa: string;
+  vistas: number;
+  pico_max: number | null;
+  promedio_vivo: number | null;
+}
+
+export interface CanalLiveStatsResponse {
+  pico_max_vivo: number | null;
+  promedio_vivo: number | null;
+}
+
 export interface KeywordOut {
   hashtag: string;
   occurrences: number;
