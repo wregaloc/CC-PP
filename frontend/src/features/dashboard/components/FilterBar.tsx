@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useFilterCanales, useFilterPeriodos, useFilterProgramas } from "@/features/dashboard/hooks/useFilterOptions";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +14,11 @@ function toUndefined(value: string): string | undefined {
  * selección de programa/canal que recontextualiza varios paneles a la vez).
  * Los `<select>` se alimentan de /filters/* — nunca de una lista hardcodeada,
  * para no duplicar en el frontend datos que ya vienen del backend.
+ *
+ * Queda fija (`sticky`) arriba de la página para poder cambiar fecha/programa/
+ * canal en cualquier momento sin volver a subir el scroll. Al hacer scroll se
+ * vuelve semitransparente con blur (no se oculta ni pierde legibilidad de los
+ * controles) — solo un efecto visual de "recede" para no tapar el contenido.
  */
 export function FilterBar() {
   const { filters, setFechaInicio, setFechaFin, setPrograma, setCanal, clearFilters } =
@@ -19,14 +26,28 @@ export function FilterBar() {
   const programasQuery = useFilterProgramas();
   const canalesQuery = useFilterCanales();
   const periodosQuery = useFilterPeriodos();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    function handleScroll() {
+      setIsScrolled(window.scrollY > 8);
+    }
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const hasActiveFilters =
     filters.fecha_inicio || filters.fecha_fin || filters.programa || filters.canal;
 
   return (
     <div
-      className="flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-4
-        shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+      className={`sticky top-0 z-30 flex flex-wrap items-end gap-3 rounded-lg border p-4
+        transition-all duration-300 ${
+          isScrolled
+            ? "border-neutral-200/60 bg-white/75 shadow-md backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-900/75"
+            : "border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+        }`}
     >
       <DateRangePicker
         label="Rango de fechas"
