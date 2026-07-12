@@ -4,10 +4,12 @@ import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { KpiCard } from "@/features/dashboard/components/KpiCard";
+import type { KpiAccent } from "@/features/dashboard/components/KpiCard";
 import { formatPercent } from "@/features/dashboard/lib/formatters";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useSentimentKpis } from "@/features/dashboard/hooks/useSentimentKpis";
 import { useSentimientoEvolutivo } from "@/features/dashboard/hooks/useSentimentoEvolutivo";
+import type { SentimientoEvolutivoPoint } from "@/features/dashboard/types";
 
 // Mismos colores que las KpiCard de arriba (text-green-600/red-600/neutral-500
 // en Tailwind) — Recharts dibuja en SVG y necesita el hex directo, no puede
@@ -17,6 +19,50 @@ const SENTIMENT_LINE_COLORS = {
   pct_negativo: "#dc2626",
   pct_neutral: "#9ca3af",
 } as const;
+
+type SentimentKey = "pct_positivo" | "pct_negativo" | "pct_neutral";
+
+/** Variación MoM en puntos porcentuales: último punto de la serie vs. el
+ * penúltimo (mes más reciente vs. el anterior) — no confundir con variación
+ * porcentual relativa, ya estamos comparando dos porcentajes entre sí. */
+function computeMomDeltaPuntos(
+  data: SentimientoEvolutivoPoint[] | undefined,
+  key: SentimentKey,
+): number | null {
+  if (!data || data.length < 2) return null;
+  const last = data[data.length - 1][key];
+  const previous = data[data.length - 2][key];
+  if (last === null || previous === null) return null;
+  return (last - previous) * 100;
+}
+
+/** "Favorable" depende de la categoría: para Negativo, bajar es la buena
+ * noticia — nunca colorear por el signo aritmético sin pasar por esta regla. */
+function getMomColorClass(rounded: number, accent: KpiAccent): string {
+  if (rounded === 0 || accent === "neutral") {
+    return "text-neutral-500 dark:text-neutral-400";
+  }
+  const isUp = rounded > 0;
+  const isFavorable = accent === "positivo" ? isUp : !isUp;
+  return isFavorable ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400";
+}
+
+function MomIndicator({ deltaPuntos, accent }: { deltaPuntos: number | null; accent: KpiAccent }) {
+  if (deltaPuntos === null) {
+    return <span className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">—</span>;
+  }
+
+  const rounded = Math.round(deltaPuntos * 10) / 10;
+  const arrow = rounded > 0 ? "▲" : rounded < 0 ? "▼" : "→";
+  const sign = rounded > 0 ? "+" : "";
+
+  return (
+    <span className={`text-[11px] font-semibold ${getMomColorClass(rounded, accent)}`}>
+      {arrow} {sign}
+      {rounded.toFixed(1)} p.p.
+    </span>
+  );
+}
 
 /** KPI Cards de Sentimiento — Doc-Migración §5.1: Sentimiento
  * Positivo/Negativo/Neutral, medidas SPLIT SENSE[Sentimiento *]. */
@@ -52,18 +98,36 @@ export function SentimentKpiCards() {
               value={formatPercent(query.data.pct_positivo)}
               description="SPLIT SENSE[Sentimiento Positivo]"
               accent="positivo"
+              trailing={
+                <MomIndicator
+                  deltaPuntos={computeMomDeltaPuntos(evolutivoQuery.data, "pct_positivo")}
+                  accent="positivo"
+                />
+              }
             />
             <KpiCard
               label="Negativo"
               value={formatPercent(query.data.pct_negativo)}
               description="SPLIT SENSE[Sentimiento Negativo]"
               accent="negativo"
+              trailing={
+                <MomIndicator
+                  deltaPuntos={computeMomDeltaPuntos(evolutivoQuery.data, "pct_negativo")}
+                  accent="negativo"
+                />
+              }
             />
             <KpiCard
               label="Neutral"
               value={formatPercent(query.data.pct_neutral)}
               description="SPLIT SENSE[Sentimiento Neutral]"
               accent="neutral"
+              trailing={
+                <MomIndicator
+                  deltaPuntos={computeMomDeltaPuntos(evolutivoQuery.data, "pct_neutral")}
+                  accent="neutral"
+                />
+              }
             />
           </div>
         )}

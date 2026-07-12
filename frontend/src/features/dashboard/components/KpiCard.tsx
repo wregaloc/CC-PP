@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export type KpiAccent = "positivo" | "negativo" | "neutral";
 
 interface KpiCardProps {
@@ -5,6 +7,9 @@ interface KpiCardProps {
   value: string;
   description?: string;
   accent?: KpiAccent;
+  /** Contenido opcional junto al valor grande, misma línea (p. ej. un
+   * indicador de variación MoM) — ver SentimentKpiCards. */
+  trailing?: ReactNode;
 }
 
 /** Colores de acento opcionales — convención estándar de sentimiento
@@ -28,7 +33,7 @@ const ACCENT_VALUE_CLASS: Record<KpiAccent, string> = {
  * para el contenedor visual compartido). `description` se muestra como
  * tooltip nativo (`title`) — suficiente para una tarjeta simple, sin
  * necesidad de un componente de tooltip propio. */
-export function KpiCard({ label, value, description, accent }: KpiCardProps) {
+export function KpiCard({ label, value, description, accent, trailing }: KpiCardProps) {
   return (
     <div
       className="flex flex-col gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-4 py-3
@@ -42,12 +47,15 @@ export function KpiCard({ label, value, description, accent }: KpiCardProps) {
       >
         {label}
       </span>
-      <span
-        className={`text-xl font-semibold ${
-          accent ? ACCENT_VALUE_CLASS[accent] : "text-neutral-900 dark:text-neutral-100"
-        }`}
-      >
-        {value}
+      <span className="flex items-center gap-2">
+        <span
+          className={`text-xl font-semibold ${
+            accent ? ACCENT_VALUE_CLASS[accent] : "text-neutral-900 dark:text-neutral-100"
+          }`}
+        >
+          {value}
+        </span>
+        {trailing}
       </span>
     </div>
   );
