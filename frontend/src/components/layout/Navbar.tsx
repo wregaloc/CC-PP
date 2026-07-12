@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
+import { PodPulseLogo } from "@/components/layout/PodPulseLogo";
 import { useAuth } from "@/features/auth/context/AuthContext";
 
 interface NavbarProps {
@@ -30,7 +31,7 @@ export function Navbar({ onToggleSidebar }: NavbarProps) {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-neutral-200 bg-white px-4 dark:border-neutral-800 dark:bg-neutral-900">
+    <header className="flex h-16 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -40,9 +41,7 @@ export function Navbar({ onToggleSidebar }: NavbarProps) {
         >
           <span aria-hidden="true">☰</span>
         </button>
-        <span className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-          PodPulse
-        </span>
+        <PodPulseLogo />
       </div>
 
       {user && (

@@ -4,7 +4,7 @@ import type { ProgramType } from "@/features/dashboard/types";
  * tipo de programa por color de barra (naranja=Podcast, gris=Programa),
  * ambos visibles a la vez en el mismo gráfico. */
 export const TIPO_COLOR: Record<ProgramType, string> = {
-  podcast: "#f97316",
+  podcast: "#8a6f3c",
   programa: "#6b7280",
 };
 
