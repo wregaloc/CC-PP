@@ -9,7 +9,7 @@ functions) — nunca cargando filas a Python para sumar/promediar ahí.
 
 from typing import Any
 
-from sqlalchemy import Select, func, select, text
+from sqlalchemy import Select, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies.dashboard_filters import DateRangeParams
@@ -245,10 +245,17 @@ async def get_ranking_programas(
     tipo: ProgramType | None,
     formato: str | None,
     limit: int,
+    q: str | None = None,
+    programa_asegurado: str | None = None,
 ) -> list[dict[str, Any]]:
     """TDD §8.5 /dashboard/ranking/programas. Medida DAX "Ranking Programas":
     RANKX ... Dense sobre Vistas Totales DESC → DENSE_RANK() (empates comparten
-    puesto, sin huecos en la numeración siguiente).
+    puesto, sin huecos en la numeración siguiente). El `DENSE_RANK` se calcula
+    sobre el conjunto completo que matchea los filtros (subquery, antes de
+    recortar por `limit`), así que el `ranking` devuelto siempre es la
+    posición real — nunca una posición relativa a la página traída, y nunca
+    corta un grupo de empatados a la mitad (se filtra por valor de rank, no
+    por cantidad de filas).
 
     `tipo` se incluye en la respuesta (además de como filtro) para que el
     frontend pueda colorear cada barra según su tipo simultáneamente, en vez
@@ -256,11 +263,23 @@ async def get_ranking_programas(
     original distingue tipo por color de barra, no por pestaña). `formato`
     filtra por DATA[Formato] (Grabado/Vivo/Finalizado), columna ya existente
     en fact_audiencia — ver decisión registrada en Adenda 3 de la auditoría.
+
+    `q` (texto libre, ILIKE parcial sobre Programa.nombre) existe porque la
+    base tiene 1000+ programas y `limit` tiene un tope de 100 — sin esto, el
+    buscador del frontend solo podía encontrar un programa si ya estaba
+    dentro del top 100 por vistas, dejando la inmensa mayoría inalcanzable
+    desde la UI.
+
+    `programa_asegurado` (nombre exacto) garantiza que esa fila viaje en la
+    respuesta aunque quede fuera del top `limit` — el filtro de Programa de
+    la barra superior deja elegir cualquiera de los 1000+ programas (no solo
+    los del top 100), y sin esto el panel de ranking no tenía forma de
+    mostrar/resaltar un programa filtrado que no estuviera ya en el top N.
     """
     vistas_col = func.coalesce(func.sum(FactAudiencia.vistas_diarias), 0)
     ranking_col = func.dense_rank().over(order_by=vistas_col.desc())
 
-    stmt = (
+    base = (
         select(
             Programa.nombre.label("programa"),
             Programa.canal.label("canal"),
@@ -272,13 +291,20 @@ async def get_ranking_programas(
         .group_by(Programa.nombre, Programa.canal, Programa.tipo)
     )
     if canal is not None:
-        stmt = stmt.where(Programa.canal == canal)
+        base = base.where(Programa.canal == canal)
     if tipo is not None:
-        stmt = stmt.where(Programa.tipo == tipo)
+        base = base.where(Programa.tipo == tipo)
     if formato is not None:
-        stmt = stmt.where(FactAudiencia.formato == formato)
-    stmt = _apply_date_range(stmt, FactAudiencia.fecha, filters)
-    stmt = stmt.order_by(vistas_col.desc()).limit(limit)
+        base = base.where(FactAudiencia.formato == formato)
+    if q is not None:
+        base = base.where(Programa.nombre.ilike(f"%{q}%"))
+    base = _apply_date_range(base, FactAudiencia.fecha, filters)
+
+    ranked = base.subquery()
+    condicion = ranked.c.ranking <= limit
+    if programa_asegurado is not None:
+        condicion = or_(condicion, ranked.c.programa == programa_asegurado)
+    stmt = select(ranked).where(condicion).order_by(ranked.c.vistas_totales.desc())
 
     result = await session.execute(stmt)
     return [dict(row._mapping) for row in result.all()]

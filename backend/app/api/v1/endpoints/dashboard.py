@@ -126,7 +126,12 @@ async def get_evolutivo(
     "/ranking/programas",
     response_model=list[ProgramaRankingItem],
     summary="Ranking de programas por vistas",
-    description="Rol requerido: cualquier usuario autenticado.",
+    description="`q` busca por texto parcial (case-insensitive) sobre el nombre del programa, "
+    "sin estar limitado al top `limit` por vistas — la base tiene 1000+ programas y `limit` "
+    "tiene un tope de 100, así que sin `q` un programa fuera del top 100 no es encontrable. "
+    "`programa_asegurado` (nombre exacto) garantiza que ese programa viaje en la respuesta "
+    "aunque quede fuera del top `limit`, para poder resaltarlo sin perder el resto del top N. "
+    "Rol requerido: cualquier usuario autenticado.",
     responses=_AUTH_RESPONSES,
 )
 async def get_ranking_programas(
@@ -134,12 +139,16 @@ async def get_ranking_programas(
     tipo: ProgramType | None = Query(default=None, description="podcast | programa"),
     formato: str | None = Query(default=None, description="Grabado | Vivo | Finalizado"),
     limit: int = Query(default=20, ge=1, le=100),
+    q: str | None = Query(default=None, min_length=2, description="Búsqueda parcial por nombre"),
+    programa_asegurado: str | None = Query(
+        default=None, description="Nombre exacto a incluir aunque quede fuera del top `limit`"
+    ),
     filters: DateRangeParams = Depends(date_range_params),
     user: User = Depends(require_authenticated),
     session: AsyncSession = Depends(get_db),
 ) -> list[ProgramaRankingItem]:
     return await dashboard_service.get_ranking_programas(
-        session, filters, canal, tipo, formato, limit
+        session, filters, canal, tipo, formato, limit, q, programa_asegurado
     )
 
 

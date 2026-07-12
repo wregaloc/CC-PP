@@ -345,6 +345,52 @@ async def test_ranking_programas_dense_rank_ties(client: httpx.AsyncClient, seed
     assert by_name["TEST_C"]["tipo"] == "programa"
 
 
+async def test_ranking_programas_q_matches_partial_case_insensitive(
+    client: httpx.AsyncClient, seeded: dict
+) -> None:
+    """`q` existe para encontrar programas fuera del top `limit` en bases
+    grandes (1000+ programas) — acá se verifica que busca por texto parcial
+    case-insensitive, sin depender de otros filtros (canal/tipo/formato)."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/ranking/programas", headers=_auth(token), params={"q": "test_b"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["programa"] == "TEST_B"
+
+
+async def test_ranking_programas_programa_asegurado_included_beyond_limit(
+    client: httpx.AsyncClient, seeded: dict
+) -> None:
+    """`programa_asegurado` debe viajar en la respuesta aunque su ranking
+    quede fuera de `limit` — con limit=1 solo TEST_B (500 vistas, rank 1)
+    entraría por el corte normal; TEST_A (300 vistas, rank 2) solo aparece
+    porque se pide explícitamente vía programa_asegurado. Se acota por fecha
+    (igual que otros tests de este archivo) para no mezclar con datos reales
+    ya cargados en la misma base."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/ranking/programas",
+        headers=_auth(token),
+        params={
+            "limit": 1,
+            "programa_asegurado": "TEST_A",
+            "fecha_inicio": "2030-01-01",
+            "fecha_fin": "2030-01-02",
+        },
+    )
+
+    assert response.status_code == 200
+    names = {item["programa"] for item in response.json()}
+    assert "TEST_B" in names
+    assert "TEST_A" in names
+
+
 async def test_ranking_programas_filters_by_formato(
     client: httpx.AsyncClient, db_session: AsyncSession, make_programa, make_user
 ) -> None:

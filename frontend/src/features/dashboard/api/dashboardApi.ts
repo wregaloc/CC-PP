@@ -72,6 +72,8 @@ export async function getRankingProgramas(params: {
   tipo?: ProgramType;
   formato?: Formato;
   limit?: number;
+  q?: string;
+  programa_asegurado?: string;
 }): Promise<ProgramaRankingItem[]> {
   const response = await httpClient.get<ProgramaRankingItem[]>("/dashboard/ranking/programas", {
     params,

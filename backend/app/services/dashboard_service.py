@@ -72,9 +72,11 @@ async def get_ranking_programas(
     tipo: ProgramType | None,
     formato: str | None,
     limit: int,
+    q: str | None = None,
+    programa_asegurado: str | None = None,
 ) -> list[ProgramaRankingItem]:
     items = await dashboard_repository.get_ranking_programas(
-        session, filters, canal, tipo, formato, limit
+        session, filters, canal, tipo, formato, limit, q, programa_asegurado
     )
     return [ProgramaRankingItem(**item) for item in items]
 

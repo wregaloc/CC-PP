@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { QueryState } from "@/components/ui/QueryState";
@@ -13,6 +13,8 @@ import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
 import type { Formato, ProgramType } from "@/features/dashboard/types";
 
 const MAX_BARS_SHOWN = 10;
+const MIN_SEARCH_LENGTH = 2;
+const SEARCH_DEBOUNCE_MS = 350;
 type ViewMode = "grafico" | "tabla";
 
 // Valores reales de DATA[Formato] confirmados por el usuario: Grabado, Vivo,
@@ -38,14 +40,25 @@ const TIPO_TABS: { value: ProgramType | ""; label: string }[] = [
 /** Ranking horizontal PROGRAMAS + VISTAS TOTALES — Doc-Migración §5.1: cada
  * barra se colorea por `tipo` simultáneamente (no como filtro excluyente,
  * ver Propuesta 1 aprobada), con filtro por `formato` (Propuesta 2 aprobada)
- * y buscador de programas integrado. El buscador filtra en el cliente sobre
- * el conjunto ya traído (la API no expone un parámetro de búsqueda de texto). */
+ * y buscador de programas integrado.
+ * El buscador consulta al backend (`q`, con debounce) en vez de filtrar en
+ * el cliente: la base tiene 1000+ programas y este panel solo trae el top
+ * 100 por vistas, así que un programa fuera de ese top 100 era imposible de
+ * encontrar filtrando solo lo ya traído. */
 export function RankingProgramasPanel() {
   const { filters, setPrograma } = useDashboardFilters();
   const [formato, setFormato] = useState<Formato | "">("");
   const [tipo, setTipo] = useState<ProgramType | "">("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [view, setView] = useState<ViewMode>("grafico");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const q = debouncedSearch.length >= MIN_SEARCH_LENGTH ? debouncedSearch : undefined;
 
   const query = useRankingProgramas({
     fecha_inicio: filters.fecha_inicio,
@@ -54,13 +67,11 @@ export function RankingProgramasPanel() {
     formato: formato || undefined,
     tipo: tipo || undefined,
     limit: 100,
+    q,
+    programa_asegurado: filters.programa,
   });
 
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const data = query.data ?? [];
-    return term ? data.filter((item) => item.programa.toLowerCase().includes(term)) : data;
-  }, [query.data, search]);
+  const filtered = query.data ?? [];
 
   // El gráfico solo muestra el top N por espacio, así que si el programa
   // filtrado arriba queda fuera de ese top N, se agrega igual al final —
