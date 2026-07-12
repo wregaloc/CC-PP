@@ -140,6 +140,39 @@ async def get_auspicios(
     ]
 
 
+async def get_auspicios_por_marca(
+    session: AsyncSession, query_texto: str
+) -> list[dict[str, Any]]:
+    """Búsqueda inversa a get_auspicios: dado un texto de marca (p. ej. "BCP"),
+    devuelve los programas/canales donde aparece como auspiciador — coincidencia
+    parcial, case-insensitive (ILIKE), sin exigir elegir un programa primero."""
+    stmt = (
+        select(
+            Programa.nombre.label("programa"),
+            Programa.canal.label("canal"),
+            Auspicio.auspiciador,
+            Auspicio.mes_num,
+            Auspicio.mes_nombre,
+        )
+        .join(Programa, Auspicio.programa_id == Programa.id)
+        .where(Auspicio.auspiciador.ilike(f"%{query_texto}%"))
+        .distinct()
+        .order_by(Programa.nombre, Auspicio.mes_num)
+    )
+
+    result = await session.execute(stmt)
+    return [
+        {
+            "programa": row.programa,
+            "canal": row.canal,
+            "auspiciador": row.auspiciador,
+            "mes_num": row.mes_num,
+            "mes_nombre": row.mes_nombre,
+        }
+        for row in result
+    ]
+
+
 async def get_evolutivo(
     session: AsyncSession,
     filters: DateRangeParams,

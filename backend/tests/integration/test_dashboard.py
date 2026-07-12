@@ -234,6 +234,52 @@ async def test_auspicios_lists_sponsors_for_programa(
     assert response.json() == [{"auspiciador": "MarcaX", "mes_num": 1, "mes_nombre": "Enero"}]
 
 
+async def test_buscar_auspicios_matches_partial_case_insensitive(
+    client: httpx.AsyncClient, seeded: dict
+) -> None:
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/auspicios/buscar", headers=_auth(token), params={"q": "marca"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "programa": "TEST_A",
+            "canal": "Canal X",
+            "auspiciador": "MarcaX",
+            "mes_num": 1,
+            "mes_nombre": "Enero",
+        }
+    ]
+
+
+async def test_buscar_auspicios_no_match_returns_empty_list(
+    client: httpx.AsyncClient, seeded: dict
+) -> None:
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/auspicios/buscar", headers=_auth(token), params={"q": "noexiste"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+async def test_buscar_auspicios_requires_min_length(
+    client: httpx.AsyncClient, seeded: dict
+) -> None:
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/auspicios/buscar", headers=_auth(token), params={"q": "a"}
+    )
+
+    assert response.status_code == 422
+
+
 async def test_evolutivo_groups_by_dia(client: httpx.AsyncClient, seeded: dict) -> None:
     token = await _login(client, "viewer@podpulse.pe", "Valida123")
 

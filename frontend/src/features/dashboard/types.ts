@@ -44,6 +44,14 @@ export interface AuspicioOut {
   mes_nombre: string;
 }
 
+export interface AuspicioBusquedaItem {
+  programa: string;
+  canal: string;
+  auspiciador: string;
+  mes_num: number;
+  mes_nombre: string;
+}
+
 export interface EvolutivoPoint {
   periodo: string;
   vistas_totales: number;

@@ -1,6 +1,7 @@
 import { httpClient } from "@/lib/httpClient";
 
 import type {
+  AuspicioBusquedaItem,
   AuspicioOut,
   CanalProgramaItem,
   CanalRankingItem,
@@ -47,6 +48,13 @@ export async function getAuspicios(params: {
   mes?: number;
 }): Promise<AuspicioOut[]> {
   const response = await httpClient.get<AuspicioOut[]>("/dashboard/auspicios", { params });
+  return response.data;
+}
+
+export async function getAuspiciosBusqueda(q: string): Promise<AuspicioBusquedaItem[]> {
+  const response = await httpClient.get<AuspicioBusquedaItem[]>("/dashboard/auspicios/buscar", {
+    params: { q },
+  });
   return response.data;
 }
 

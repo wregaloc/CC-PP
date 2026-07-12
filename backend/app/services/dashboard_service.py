@@ -8,6 +8,7 @@ from app.dependencies.dashboard_filters import DateRangeParams
 from app.models.enums import ProgramType
 from app.repositories import dashboard_repository
 from app.schemas.dashboard import (
+    AuspicioBusquedaItem,
     AuspicioOut,
     CanalLiveStatsResponse,
     CanalProgramaItem,
@@ -44,6 +45,13 @@ async def get_auspicios(
 ) -> list[AuspicioOut]:
     rows = await dashboard_repository.get_auspicios(session, programa, mes)
     return [AuspicioOut(**row) for row in rows]
+
+
+async def get_auspicios_por_marca(
+    session: AsyncSession, query_texto: str
+) -> list[AuspicioBusquedaItem]:
+    rows = await dashboard_repository.get_auspicios_por_marca(session, query_texto)
+    return [AuspicioBusquedaItem(**row) for row in rows]
 
 
 async def get_evolutivo(

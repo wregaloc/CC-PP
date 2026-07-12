@@ -59,6 +59,14 @@ class AuspicioOut(BaseModel):
     mes_nombre: str
 
 
+class AuspicioBusquedaItem(BaseModel):
+    programa: str
+    canal: str
+    auspiciador: str
+    mes_num: int
+    mes_nombre: str
+
+
 class EvolutivoPoint(BaseModel):
     periodo: str = Field(
         description="Formato según granularidad: dia=YYYY-MM-DD, semana=YYYY-Wnn, "

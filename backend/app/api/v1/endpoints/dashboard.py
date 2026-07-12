@@ -10,6 +10,7 @@ from app.dependencies.db import get_db
 from app.models.enums import ProgramType
 from app.models.user import User
 from app.schemas.dashboard import (
+    AuspicioBusquedaItem,
     AuspicioOut,
     CanalLiveStatsResponse,
     CanalProgramaItem,
@@ -81,6 +82,24 @@ async def get_auspicios(
     session: AsyncSession = Depends(get_db),
 ) -> list[AuspicioOut]:
     return await dashboard_service.get_auspicios(session, programa, mes)
+
+
+@router.get(
+    "/auspicios/buscar",
+    response_model=list[AuspicioBusquedaItem],
+    summary="Búsqueda de programas por marca auspiciadora",
+    description="Búsqueda inversa a /auspicios: dado un texto de marca (ej. 'BCP'), devuelve "
+    "los programas/canales donde aparece como auspiciador — coincidencia parcial, "
+    "case-insensitive, sin exigir elegir un programa primero. Rol requerido: cualquier "
+    "usuario autenticado.",
+    responses=_AUTH_RESPONSES,
+)
+async def buscar_auspicios(
+    q: str = Query(min_length=2, description="Texto a buscar en el nombre del auspiciador"),
+    user: User = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db),
+) -> list[AuspicioBusquedaItem]:
+    return await dashboard_service.get_auspicios_por_marca(session, q)
 
 
 @router.get(
