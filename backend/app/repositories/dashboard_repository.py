@@ -172,6 +172,26 @@ async def get_auspicios_por_marca(
     ]
 
 
+async def get_top_auspiciadores(session: AsyncSession, limit: int) -> list[dict[str, Any]]:
+    """Ranking global de auspiciadores por cantidad de programas distintos en los que
+    aparecen — usado en el panel Auspicios cuando no hay un programa elegido. Sin
+    filtro de fecha: dim_auspicios no tiene columna de año (ver get_auspicios), así
+    que "global" es sobre todo el dataset, no solo el rango de fechas actual."""
+    cantidad = func.count(func.distinct(Auspicio.programa_id))
+    stmt = (
+        select(Auspicio.auspiciador, cantidad.label("cantidad_programas"))
+        .group_by(Auspicio.auspiciador)
+        .order_by(cantidad.desc(), Auspicio.auspiciador)
+        .limit(limit)
+    )
+
+    result = await session.execute(stmt)
+    return [
+        {"auspiciador": row.auspiciador, "cantidad_programas": row.cantidad_programas}
+        for row in result
+    ]
+
+
 async def get_evolutivo(
     session: AsyncSession,
     filters: DateRangeParams,

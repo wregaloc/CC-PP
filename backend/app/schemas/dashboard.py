@@ -66,6 +66,13 @@ class AuspicioBusquedaItem(BaseModel):
     mes_nombre: str
 
 
+class AuspiciadorTopItem(BaseModel):
+    auspiciador: str
+    cantidad_programas: int = Field(
+        description="Cantidad de programas distintos en los que aparece como auspiciador"
+    )
+
+
 class EvolutivoPoint(BaseModel):
     periodo: str = Field(
         description="Formato según granularidad: dia=YYYY-MM-DD, semana=YYYY-Wnn, "

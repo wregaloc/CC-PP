@@ -9,6 +9,7 @@ from app.models.enums import ProgramType, SentimentType, UserRole
 from app.models.fact_audiencia import FactAudiencia
 from app.models.fact_keywords import FactKeywords
 from app.models.fact_sentimiento import FactSentimiento
+from app.repositories import dashboard_repository
 
 pytestmark = pytest.mark.usefixtures("db_session")
 
@@ -278,6 +279,50 @@ async def test_buscar_auspicios_requires_min_length(
     )
 
     assert response.status_code == 422
+
+
+async def test_top_auspiciadores_orders_by_program_count_desc(
+    seeded: dict, db_session: AsyncSession, make_programa
+) -> None:
+    """/auspicios/top no filtra por fecha (dim_auspicios no tiene año) — el conteo
+    es sobre todo el dataset, así que la base de test/dev puede tener otros
+    auspiciadores reales de por medio (mismo riesgo que en
+    test_ranking_programas_programa_asegurado_included_beyond_limit). El endpoint
+    HTTP limita `limit` a 50 (tope de UI razonable para un top-N), así que acá se
+    llama al repository directamente con un `limit` grande para no depender de
+    cuántos otros auspiciadores reales existan."""
+    top_a = await make_programa("ZZZ_TOP_PROGA", "Canal Top", tipo=ProgramType.PODCAST)
+    top_b = await make_programa("ZZZ_TOP_PROGB", "Canal Top", tipo=ProgramType.PODCAST)
+    top_c = await make_programa("ZZZ_TOP_PROGC", "Canal Top", tipo=ProgramType.PODCAST)
+    db_session.add_all(
+        [
+            Auspicio(mes_num=1, mes_nombre="Enero", programa_id=top_a.id, auspiciador="ZZZ_TOP_MARCA"),
+            Auspicio(mes_num=1, mes_nombre="Enero", programa_id=top_b.id, auspiciador="ZZZ_TOP_MARCA"),
+            Auspicio(mes_num=1, mes_nombre="Enero", programa_id=top_c.id, auspiciador="ZZZ_TOP_MARCA"),
+            Auspicio(mes_num=1, mes_nombre="Enero", programa_id=top_a.id, auspiciador="ZZZ_LOW_MARCA"),
+        ]
+    )
+    await db_session.flush()
+
+    rows = await dashboard_repository.get_top_auspiciadores(db_session, limit=1_000_000)
+
+    por_nombre = {row["auspiciador"]: row for row in rows}
+    assert por_nombre["ZZZ_TOP_MARCA"]["cantidad_programas"] == 3
+    assert por_nombre["ZZZ_LOW_MARCA"]["cantidad_programas"] == 1
+    posicion_top = rows.index(por_nombre["ZZZ_TOP_MARCA"])
+    posicion_low = rows.index(por_nombre["ZZZ_LOW_MARCA"])
+    assert posicion_top < posicion_low
+
+
+async def test_top_auspiciadores_respects_limit(client: httpx.AsyncClient, seeded: dict) -> None:
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/auspicios/top", headers=_auth(token), params={"limit": 1}
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
 
 
 async def test_evolutivo_groups_by_dia(client: httpx.AsyncClient, seeded: dict) -> None:

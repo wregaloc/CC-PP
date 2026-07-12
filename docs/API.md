@@ -193,6 +193,9 @@ Parámetro común a casi todos: `?fecha_inicio&fecha_fin` (ambos opcionales; `42
 ### GET /dashboard/auspicios/buscar
 `?q` (mínimo 2 caracteres) → `[{programa, canal, auspiciador, mes_num, mes_nombre}]`. Búsqueda inversa a `/auspicios`: dado un texto de marca (ej. `BCP`), devuelve los programas/canales donde aparece como auspiciador — coincidencia parcial, case-insensitive (`ILIKE %q%`), sin filtro de fecha en el backend (el frontend recorta por mes en el cliente, igual que `/auspicios` con rango multi-mes).
 
+### GET /dashboard/auspicios/top
+`?limit=5` (1-50) → `[{auspiciador, cantidad_programas}]`, ordenado por `cantidad_programas` DESC. Ranking global de auspiciadores por cantidad de programas distintos en los que aparecen — sobre todo el dataset, sin filtrar por programa ni fecha (`dim_auspicios` no tiene columna de año, igual que `/auspicios`). Usado en el panel Auspicios como contenido de reemplazo mientras no se eligió un programa (antes ese estado solo mostraba un aviso).
+
 ### GET /dashboard/evolutivo
 `?fecha_inicio&fecha_fin&granularidad={anio|mes|semana|dia}&metrica_secundaria={emisiones|busquedas}&programa&canal` → `[{periodo, vistas_totales, metrica_secundaria}]`. Reemplaza la medida DAX "KPI Vistas Promedio Dinámico" (que el propio TDD marcó como lógica frágil, basada en `CONTAINSSTRING` sobre texto) por un switch explícito sobre un enum — agrupa siempre por columnas ya materializadas en el ETL (`anio`/`mes_num`/`semana_num`), nunca recalculando fecha en SQL. Formato de `periodo`: `dia`→`YYYY-MM-DD`, `semana`→`YYYY-Wnn`, `mes`→`YYYY-MM`, `anio`→`YYYY`.
 

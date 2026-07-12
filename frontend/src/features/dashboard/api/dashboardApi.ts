@@ -1,6 +1,7 @@
 import { httpClient } from "@/lib/httpClient";
 
 import type {
+  AuspiciadorTopItem,
   AuspicioBusquedaItem,
   AuspicioOut,
   DashboardFilters,
@@ -52,6 +53,13 @@ export async function getAuspicios(params: {
 export async function getAuspiciosBusqueda(q: string): Promise<AuspicioBusquedaItem[]> {
   const response = await httpClient.get<AuspicioBusquedaItem[]>("/dashboard/auspicios/buscar", {
     params: { q },
+  });
+  return response.data;
+}
+
+export async function getTopAuspiciadores(limit = 5): Promise<AuspiciadorTopItem[]> {
+  const response = await httpClient.get<AuspiciadorTopItem[]>("/dashboard/auspicios/top", {
+    params: { limit },
   });
   return response.data;
 }

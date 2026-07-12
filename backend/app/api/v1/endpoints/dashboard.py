@@ -10,6 +10,7 @@ from app.dependencies.db import get_db
 from app.models.enums import ProgramType
 from app.models.user import User
 from app.schemas.dashboard import (
+    AuspiciadorTopItem,
     AuspicioBusquedaItem,
     AuspicioOut,
     EvolutivoPoint,
@@ -97,6 +98,24 @@ async def buscar_auspicios(
     session: AsyncSession = Depends(get_db),
 ) -> list[AuspicioBusquedaItem]:
     return await dashboard_service.get_auspicios_por_marca(session, q)
+
+
+@router.get(
+    "/auspicios/top",
+    response_model=list[AuspiciadorTopItem],
+    summary="Top auspiciadores globales",
+    description="Ranking de auspiciadores por cantidad de programas distintos en los que "
+    "aparecen, sobre todo el dataset (sin filtrar por programa ni fecha). Usado en el panel "
+    "Auspicios cuando todavía no se eligió un programa. Rol requerido: cualquier usuario "
+    "autenticado.",
+    responses=_AUTH_RESPONSES,
+)
+async def get_auspicios_top(
+    limit: int = Query(default=5, ge=1, le=50),
+    user: User = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db),
+) -> list[AuspiciadorTopItem]:
+    return await dashboard_service.get_top_auspiciadores(session, limit)
 
 
 @router.get(

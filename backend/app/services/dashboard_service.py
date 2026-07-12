@@ -8,6 +8,7 @@ from app.dependencies.dashboard_filters import DateRangeParams
 from app.models.enums import ProgramType
 from app.repositories import dashboard_repository
 from app.schemas.dashboard import (
+    AuspiciadorTopItem,
     AuspicioBusquedaItem,
     AuspicioOut,
     EvolutivoPoint,
@@ -49,6 +50,11 @@ async def get_auspicios_por_marca(
 ) -> list[AuspicioBusquedaItem]:
     rows = await dashboard_repository.get_auspicios_por_marca(session, query_texto)
     return [AuspicioBusquedaItem(**row) for row in rows]
+
+
+async def get_top_auspiciadores(session: AsyncSession, limit: int) -> list[AuspiciadorTopItem]:
+    rows = await dashboard_repository.get_top_auspiciadores(session, limit)
+    return [AuspiciadorTopItem(**row) for row in rows]
 
 
 async def get_evolutivo(

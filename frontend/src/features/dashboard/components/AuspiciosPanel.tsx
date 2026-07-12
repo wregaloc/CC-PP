@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useAuspicios } from "@/features/dashboard/hooks/useAuspicios";
 import { useAuspiciosBusqueda } from "@/features/dashboard/hooks/useAuspiciosBusqueda";
+import { useTopAuspiciadores } from "@/features/dashboard/hooks/useTopAuspiciadores";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
 import { MESES, mesesFromRango } from "@/features/dashboard/lib/mes";
@@ -133,7 +134,12 @@ function AuspiciosPorPrograma({
   }, [singleMes, datosEnRango]);
 
   if (!hasPrograma) {
-    return <InfoBanner>Elige un programa en los filtros para ver sus auspiciadores.</InfoBanner>;
+    return (
+      <div className="flex flex-col gap-4">
+        <InfoBanner>Elige un programa en los filtros para ver sus auspiciadores.</InfoBanner>
+        <TopAuspiciadoresGlobal />
+      </div>
+    );
   }
 
   return (
@@ -195,6 +201,49 @@ function AuspiciosPorPrograma({
         </div>
       )}
     </QueryState>
+  );
+}
+
+const TOP_AUSPICIADORES_LIMIT = 5;
+
+/** Ranking global de auspiciadores (sin filtro de programa ni fecha, ver
+ * /dashboard/auspicios/top) — se muestra mientras no se eligió un programa,
+ * como contenido útil en vez de dejar el panel vacío con solo el aviso. */
+function TopAuspiciadoresGlobal() {
+  const query = useTopAuspiciadores(TOP_AUSPICIADORES_LIMIT);
+  const items = query.data ?? [];
+
+  return (
+    <div className="flex flex-col gap-2">
+      <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+        Top {TOP_AUSPICIADORES_LIMIT} auspiciadores globales
+      </h4>
+      <QueryState
+        isLoading={query.isLoading}
+        isError={query.isError}
+        error={query.error}
+        isEmpty={items.length === 0}
+        emptyMessage="No hay auspiciadores registrados."
+        onRetry={query.refetch}
+        loadingFallback={<Skeleton className="h-40 w-full" />}
+      >
+        <ul className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800">
+          {items.map((item, index) => (
+            <li key={item.auspiciador} className="flex items-center justify-between gap-3 py-2">
+              <span className="flex items-center gap-2.5 text-sm font-medium text-neutral-800 dark:text-neutral-100">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#b4975a] text-[11px] font-semibold text-[#0e0c09]">
+                  {index + 1}
+                </span>
+                {item.auspiciador}
+              </span>
+              <span className="shrink-0 text-xs text-neutral-500 dark:text-neutral-400">
+                {item.cantidad_programas} programa{item.cantidad_programas === 1 ? "" : "s"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </QueryState>
+    </div>
   );
 }
 
