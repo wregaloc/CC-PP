@@ -1,5 +1,5 @@
 import { AuspiciosPanel } from "@/features/dashboard/components/AuspiciosPanel";
-import { EvolutivoChart } from "@/features/dashboard/components/EvolutivoChart";
+import { EvolutivoDetalladoChart } from "@/features/dashboard/components/EvolutivoDetalladoChart";
 import { FilterBar } from "@/features/dashboard/components/FilterBar";
 import { KeywordsCloud } from "@/features/dashboard/components/KeywordsCloud";
 import { KpiRow } from "@/features/dashboard/components/KpiRow";
@@ -27,7 +27,7 @@ export function DashboardPage() {
         <KpiRow />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <EvolutivoChart />
+          <EvolutivoDetalladoChart />
           <AuspiciosPanel />
         </div>
 

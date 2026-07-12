@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -41,40 +41,20 @@ const LINE_COLOR = "#eab308"; // amarillo — Doc-Migración §5.2: "Línea amar
  * Gráfico combinado (barras + línea) — Doc-Migración §5.2 "Evolutivo
  * Detallado": barras = Vistas Totales, línea amarilla = Emisiones o
  * Búsquedas según selección, con segmentadores de granularidad temporal y
- * tipo, y un slider para acotar el rango de valores de la métrica
- * secundaria mostrados. Reutiliza `useEvolutivo` (mismo hook de la Página
- * 1) — la Página 1 solo lo consumía con granularidad/tipo fijos, acá se
- * exponen como controles de usuario reales, sin tocar el backend.
+ * tipo. Se usa en el Dashboard (Página 1, junto a Auspicios) — reemplazó al
+ * antiguo "Evolutivo Vistas" (línea simple con granularidad fija).
  */
 export function EvolutivoDetalladoChart() {
   const { filters, setFechaInicio, setFechaFin } = useDashboardFilters();
   const [granularidad, setGranularidad] = useState<Granularidad>("mes");
   const [metricaSecundaria, setMetricaSecundaria] = useState<MetricaSecundaria>("emisiones");
-  const [rango, setRango] = useState<[number, number] | null>(null);
 
   const query = useEvolutivo({ ...filters, granularidad, metrica_secundaria: metricaSecundaria });
 
-  const bounds = useMemo(() => {
-    const data = query.data ?? [];
-    if (data.length === 0) return null;
-    const valores = data.map((p) => p.metrica_secundaria);
-    return { min: Math.min(...valores), max: Math.max(...valores) };
-  }, [query.data]);
-
-  // El slider vuelve a cubrir todo el rango disponible cada vez que cambian
-  // los datos (nueva granularidad/tipo/filtro) — si no, un rango angosto
-  // elegido antes podría ocultar todos los puntos nuevos silenciosamente.
-  useEffect(() => {
-    setRango(bounds ? [bounds.min, bounds.max] : null);
-  }, [bounds]);
-
   const chartData = useMemo(() => {
     const data = query.data ?? [];
-    const filtrado = rango
-      ? data.filter((p) => p.metrica_secundaria >= rango[0] && p.metrica_secundaria <= rango[1])
-      : data;
-    return filtrado.map((punto) => ({ ...punto, rango: rangoFromPeriodo(punto.periodo, granularidad) }));
-  }, [query.data, rango, granularidad]);
+    return data.map((punto) => ({ ...punto, rango: rangoFromPeriodo(punto.periodo, granularidad) }));
+  }, [query.data, granularidad]);
 
   const metricaLabel = METRICA_TABS.find((tab) => tab.value === metricaSecundaria)?.label ?? "";
 
@@ -132,41 +112,6 @@ export function EvolutivoDetalladoChart() {
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
         Haz clic en una barra para filtrar toda la página por ese período.
       </p>
-
-      {bounds && rango && (
-        <div className="flex flex-col gap-1 text-xs text-neutral-600 dark:text-neutral-400">
-          <span>
-            Filtrar por {metricaLabel.toLowerCase()}: {formatCompactNumber(rango[0])} –{" "}
-            {formatCompactNumber(rango[1])}
-          </span>
-          <div className="flex items-center gap-2">
-            <input
-              type="range"
-              aria-label={`${metricaLabel} mínimo`}
-              min={bounds.min}
-              max={bounds.max}
-              value={rango[0]}
-              onChange={(event) => {
-                const next = Math.min(Number(event.target.value), rango[1]);
-                setRango([next, rango[1]]);
-              }}
-              className="w-full"
-            />
-            <input
-              type="range"
-              aria-label={`${metricaLabel} máximo`}
-              min={bounds.min}
-              max={bounds.max}
-              value={rango[1]}
-              onChange={(event) => {
-                const next = Math.max(Number(event.target.value), rango[0]);
-                setRango([rango[0], next]);
-              }}
-              className="w-full"
-            />
-          </div>
-        </div>
-      )}
 
       <QueryState
         isLoading={query.isLoading}

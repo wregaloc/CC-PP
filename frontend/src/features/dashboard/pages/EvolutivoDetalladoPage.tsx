@@ -1,11 +1,13 @@
 import { CanalDetailPanel } from "@/features/dashboard/components/CanalDetailPanel";
-import { EvolutivoDetalladoChart } from "@/features/dashboard/components/EvolutivoDetalladoChart";
 import { FilterBar } from "@/features/dashboard/components/FilterBar";
 import { RankingCanalesPanel } from "@/features/dashboard/components/RankingCanalesPanel";
 import { DashboardFiltersProvider } from "@/features/dashboard/context/DashboardFiltersContext";
 
 /**
  * Página 2 — Evolutivo Detallado (Doc-Migración §5.2).
+ *
+ * El chart "Evolutivo Detallado" se movió al Dashboard (Página 1, junto a
+ * Auspicios); esta página quedó con Ranking de Canales y Detalle de Canal.
  *
  * Misma arquitectura de filtros que la Página 1: cada página monta su propia
  * instancia de `DashboardFiltersProvider` (no hay persistencia de filtros
@@ -22,7 +24,6 @@ export function EvolutivoDetalladoPage() {
     <DashboardFiltersProvider>
       <div className="flex flex-col gap-4">
         <FilterBar />
-        <EvolutivoDetalladoChart />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <RankingCanalesPanel />
