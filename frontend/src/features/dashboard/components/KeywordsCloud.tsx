@@ -6,6 +6,7 @@ import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useKeywords } from "@/features/dashboard/hooks/useKeywords";
 import { MESES, mesesFromRango } from "@/features/dashboard/lib/mes";
+import { TAB_GROUP_CLASS, tabButtonClass } from "@/features/dashboard/lib/tabStyles";
 import { layoutWordCloud } from "@/features/dashboard/lib/wordCloudLayout";
 import type { SentimientoFiltro } from "@/features/dashboard/types";
 
@@ -105,7 +106,7 @@ export function KeywordsCloud() {
     <DashboardCard
       title={title}
       action={
-        <div className="flex flex-wrap gap-1" role="tablist" aria-label="Filtrar por sentimiento">
+        <div className={TAB_GROUP_CLASS} role="tablist" aria-label="Filtrar por sentimiento">
           {SENTIMIENTO_TABS.map((tab) => (
             <button
               key={tab.value}
@@ -113,11 +114,7 @@ export function KeywordsCloud() {
               role="tab"
               aria-selected={sentimiento === tab.value}
               onClick={() => setSentimiento(tab.value)}
-              className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                sentimiento === tab.value
-                  ? "bg-blue-600 text-white"
-                  : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-              }`}
+              className={tabButtonClass(sentimiento === tab.value)}
             >
               {tab.label}
             </button>

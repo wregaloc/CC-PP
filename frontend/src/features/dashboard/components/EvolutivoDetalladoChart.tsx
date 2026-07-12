@@ -20,6 +20,7 @@ import { useDashboardFilters } from "@/features/dashboard/context/DashboardFilte
 import { useEvolutivo } from "@/features/dashboard/hooks/useEvolutivo";
 import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
 import { rangoFromPeriodo } from "@/features/dashboard/lib/periodo";
+import { TAB_GROUP_CLASS, tabButtonClass } from "@/features/dashboard/lib/tabStyles";
 import type { Granularidad, MetricaSecundaria } from "@/features/dashboard/types";
 
 const GRANULARIDAD_TABS: { value: Granularidad; label: string }[] = [
@@ -34,8 +35,41 @@ const METRICA_TABS: { value: MetricaSecundaria; label: string }[] = [
   { value: "emisiones", label: "Emisiones" },
 ];
 
-const BAR_COLOR = "#2563eb";
-const LINE_COLOR = "#eab308"; // amarillo — Doc-Migración §5.2: "Línea amarilla = Emisiones"
+const BAR_COLOR = "#4a453d";
+const BAR_OPACITY = 0.9;
+const BAR_HOVER_COLOR = "#5c564a";
+const BAR_TOP_BORDER_COLOR = "rgba(180,151,90,0.3)";
+const LINE_COLOR = "#d8bc82"; // oro claro — antes amarillo (#eab308), Doc-Migración §5.2: "Línea = Emisiones"
+const LINE_DOT_COLOR = "#b4975a";
+const BAR_LABEL_COLOR = "#f5f1e8";
+
+interface BarShapeProps {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fill: string;
+  fillOpacity?: number;
+  stroke?: string;
+  strokeWidth?: number;
+  onClick?: () => void;
+}
+
+/** Barra con esquinas superiores redondeadas: sin selección muestra un filo
+ * dorado sutil solo en el borde superior; seleccionada muestra el contorno
+ * blanco completo existente (ver `isSelected` en el mapeo de `Cell`s). */
+function BarWithTopBorder({ x, y, width, height, fill, fillOpacity, stroke, strokeWidth, onClick }: BarShapeProps) {
+  return (
+    <g onClick={onClick}>
+      <rect x={x} y={y} width={width} height={height} rx={4} ry={4} fill={fill} fillOpacity={fillOpacity} />
+      {stroke ? (
+        <rect x={x} y={y} width={width} height={height} rx={4} ry={4} fill="none" stroke={stroke} strokeWidth={strokeWidth} />
+      ) : (
+        <line x1={x} y1={y} x2={x + width} y2={y} stroke={BAR_TOP_BORDER_COLOR} strokeWidth={1} />
+      )}
+    </g>
+  );
+}
 
 /**
  * Gráfico combinado (barras + línea) — Doc-Migración §5.2 "Evolutivo
@@ -69,7 +103,7 @@ export function EvolutivoDetalladoChart() {
       className="md:col-span-2"
       action={
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap gap-1" role="tablist" aria-label="Granularidad temporal">
+          <div className={TAB_GROUP_CLASS} role="tablist" aria-label="Granularidad temporal">
             {GRANULARIDAD_TABS.map((tab) => (
               <button
                 key={tab.value}
@@ -77,18 +111,14 @@ export function EvolutivoDetalladoChart() {
                 role="tab"
                 aria-selected={granularidad === tab.value}
                 onClick={() => setGranularidad(tab.value)}
-                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                  granularidad === tab.value
-                    ? "bg-blue-600 text-white"
-                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-                }`}
+                className={tabButtonClass(granularidad === tab.value)}
               >
                 {tab.label}
               </button>
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-1" role="tablist" aria-label="Métrica secundaria">
+          <div className={TAB_GROUP_CLASS} role="tablist" aria-label="Métrica secundaria">
             {METRICA_TABS.map((tab) => (
               <button
                 key={tab.value}
@@ -96,11 +126,7 @@ export function EvolutivoDetalladoChart() {
                 role="tab"
                 aria-selected={metricaSecundaria === tab.value}
                 onClick={() => setMetricaSecundaria(tab.value)}
-                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                  metricaSecundaria === tab.value
-                    ? "bg-yellow-500 text-white"
-                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-                }`}
+                className={tabButtonClass(metricaSecundaria === tab.value)}
               >
                 {tab.label}
               </button>
@@ -139,7 +165,9 @@ export function EvolutivoDetalladoChart() {
                 dataKey="vistas_totales"
                 name="Vistas Totales"
                 fill={BAR_COLOR}
-                radius={[4, 4, 0, 0]}
+                fillOpacity={BAR_OPACITY}
+                shape={BarWithTopBorder}
+                activeBar={{ fill: BAR_HOVER_COLOR, fillOpacity: BAR_OPACITY }}
                 cursor="pointer"
               >
                 <LabelList
@@ -147,7 +175,8 @@ export function EvolutivoDetalladoChart() {
                   position="insideTop"
                   offset={8}
                   formatter={(value: number) => formatCompactNumber(value)}
-                  className="fill-white text-[10px] font-medium"
+                  className="text-[10px] font-medium"
+                  fill={BAR_LABEL_COLOR}
                 />
                 {chartData.map((punto) => {
                   const isSelected =
@@ -156,6 +185,7 @@ export function EvolutivoDetalladoChart() {
                     <Cell
                       key={punto.periodo}
                       fill={BAR_COLOR}
+                      fillOpacity={BAR_OPACITY}
                       stroke={isSelected ? "#fff" : undefined}
                       strokeWidth={isSelected ? 2 : 0}
                       onClick={() => handleBarClick(punto.rango)}
@@ -170,14 +200,15 @@ export function EvolutivoDetalladoChart() {
                 name={metricaLabel}
                 stroke={LINE_COLOR}
                 strokeWidth={2}
-                dot={{ r: 3 }}
+                dot={{ r: 3, fill: LINE_DOT_COLOR, stroke: LINE_DOT_COLOR }}
               >
                 <LabelList
                   dataKey="metrica_secundaria"
                   position="top"
                   offset={12}
                   formatter={(value: number) => formatCompactNumber(value)}
-                  className="fill-yellow-600 text-[10px] dark:fill-yellow-400"
+                  className="text-[10px]"
+                  fill={LINE_COLOR}
                 />
               </Line>
             </ComposedChart>

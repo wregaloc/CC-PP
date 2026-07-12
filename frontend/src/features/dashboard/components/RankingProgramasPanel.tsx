@@ -10,6 +10,7 @@ import { useDashboardFilters } from "@/features/dashboard/context/DashboardFilte
 import { useRankingProgramas } from "@/features/dashboard/hooks/useRankingProgramas";
 import { colorForTipo, TIPO_COLOR } from "@/features/dashboard/lib/tipoColors";
 import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
+import { TAB_GROUP_CLASS, tabButtonClass } from "@/features/dashboard/lib/tabStyles";
 import type { Formato, ProgramType } from "@/features/dashboard/types";
 
 const MAX_BARS_SHOWN = 10;
@@ -90,7 +91,7 @@ export function RankingProgramasPanel() {
     <DashboardCard
       title="Ranking de Programas por Vistas Totales"
       action={
-        <div className="flex flex-wrap gap-1" role="tablist" aria-label="Filtrar por formato">
+        <div className={TAB_GROUP_CLASS} role="tablist" aria-label="Filtrar por formato">
           {FORMATO_TABS.map((tab) => (
             <button
               key={tab.value}
@@ -98,11 +99,7 @@ export function RankingProgramasPanel() {
               role="tab"
               aria-selected={formato === tab.value}
               onClick={() => setFormato(tab.value)}
-              className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                formato === tab.value
-                  ? "bg-blue-600 text-white"
-                  : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-              }`}
+              className={tabButtonClass(formato === tab.value)}
             >
               {tab.label}
             </button>
@@ -128,7 +125,7 @@ export function RankingProgramasPanel() {
         />
 
         <div className="flex items-center gap-4">
-          <div className="flex flex-wrap gap-1" role="tablist" aria-label="Filtrar por tipo">
+          <div className={TAB_GROUP_CLASS} role="tablist" aria-label="Filtrar por tipo">
             {TIPO_TABS.map((tab) => (
               <button
                 key={tab.value}
@@ -136,11 +133,7 @@ export function RankingProgramasPanel() {
                 role="tab"
                 aria-selected={tipo === tab.value}
                 onClick={() => setTipo(tab.value)}
-                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                  tipo === tab.value
-                    ? "bg-blue-600 text-white"
-                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-                }`}
+                className={tabButtonClass(tipo === tab.value, "flex items-center gap-1.5")}
               >
                 {tab.value && (
                   <span
@@ -154,7 +147,7 @@ export function RankingProgramasPanel() {
             ))}
           </div>
 
-          <div className="flex gap-1" role="tablist" aria-label="Tipo de vista">
+          <div className={TAB_GROUP_CLASS} role="tablist" aria-label="Tipo de vista">
             {(["grafico", "tabla"] as const).map((mode) => (
               <button
                 key={mode}
@@ -162,11 +155,7 @@ export function RankingProgramasPanel() {
                 role="tab"
                 aria-selected={view === mode}
                 onClick={() => setView(mode)}
-                className={`rounded-md px-2 py-1 text-xs font-medium capitalize transition-colors ${
-                  view === mode
-                    ? "bg-blue-600 text-white"
-                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-                }`}
+                className={tabButtonClass(view === mode, "capitalize")}
               >
                 {mode}
               </button>

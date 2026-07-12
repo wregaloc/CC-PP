@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 
-import { Alert } from "@/components/ui/Alert";
 import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
@@ -9,19 +9,31 @@ import { useAuspiciosBusqueda } from "@/features/dashboard/hooks/useAuspiciosBus
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
 import { MESES, mesesFromRango } from "@/features/dashboard/lib/mes";
+import { TAB_GROUP_CLASS, tabButtonClass } from "@/features/dashboard/lib/tabStyles";
 
 const CHIP_LIST_CLASS = "flex flex-wrap gap-2";
 const CHIP_CLASS =
   "rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-sm font-medium text-neutral-800 " +
   "dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200";
-const TAB_CLASS = (active: boolean) =>
-  `rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-    active
-      ? "bg-blue-600 text-white"
-      : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-  }`;
 const MIN_QUERY_LENGTH = 2;
 const DEBOUNCE_MS = 350;
+
+/** Banner informativo con acento oro/carbón — sustituye a <Alert variant="info">
+ * solo dentro de este panel (cambio acotado, ver decisión con el usuario:
+ * no se tocó el componente Alert compartido ni otros paneles). */
+function InfoBanner({ children }: { children: ReactNode }) {
+  return (
+    <div
+      role="status"
+      className="flex items-stretch gap-3 rounded-md border border-[rgba(180,151,90,0.35)] bg-[rgba(180,151,90,0.08)]
+        px-4 py-3 text-sm text-neutral-800
+        dark:border-[rgba(180,151,90,0.25)] dark:bg-[#1a1714] dark:text-[#f5f1e8]"
+    >
+      <span aria-hidden="true" className="w-1 shrink-0 rounded-full bg-[#b4975a]" />
+      <span>{children}</span>
+    </div>
+  );
+}
 
 type Modo = "programa" | "auspiciador";
 
@@ -48,13 +60,13 @@ export function AuspiciosPanel() {
     <DashboardCard
       title="Auspicios"
       action={
-        <div className="flex gap-1" role="tablist" aria-label="Modo de búsqueda de auspicios">
+        <div className={TAB_GROUP_CLASS} role="tablist" aria-label="Modo de búsqueda de auspicios">
           <button
             type="button"
             role="tab"
             aria-selected={modo === "programa"}
             onClick={() => setModo("programa")}
-            className={TAB_CLASS(modo === "programa")}
+            className={tabButtonClass(modo === "programa")}
           >
             Por Programa
           </button>
@@ -63,7 +75,7 @@ export function AuspiciosPanel() {
             role="tab"
             aria-selected={modo === "auspiciador"}
             onClick={() => setModo("auspiciador")}
-            className={TAB_CLASS(modo === "auspiciador")}
+            className={tabButtonClass(modo === "auspiciador")}
           >
             Por Auspiciador
           </button>
@@ -121,7 +133,7 @@ function AuspiciosPorPrograma({
   }, [singleMes, datosEnRango]);
 
   if (!hasPrograma) {
-    return <Alert variant="info">Elige un programa en los filtros para ver sus auspiciadores.</Alert>;
+    return <InfoBanner>Elige un programa en los filtros para ver sus auspiciadores.</InfoBanner>;
   }
 
   return (
@@ -226,9 +238,9 @@ function AuspiciosPorMarca({ meses }: { meses: number[] }) {
       />
 
       {qInput.trim().length > 0 && qInput.trim().length < MIN_QUERY_LENGTH ? (
-        <Alert variant="info">Escribe al menos {MIN_QUERY_LENGTH} caracteres para buscar.</Alert>
+        <InfoBanner>Escribe al menos {MIN_QUERY_LENGTH} caracteres para buscar.</InfoBanner>
       ) : qInput.trim().length === 0 ? (
-        <Alert variant="info">Escribe el nombre (o parte del nombre) de una marca auspiciadora.</Alert>
+        <InfoBanner>Escribe el nombre (o parte del nombre) de una marca auspiciadora.</InfoBanner>
       ) : (
         <QueryState
           isLoading={query.isLoading}
