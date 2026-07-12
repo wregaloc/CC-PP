@@ -2,7 +2,6 @@ import { httpClient } from "@/lib/httpClient";
 
 import type {
   AuspicioOut,
-  CanalLiveStatsResponse,
   CanalProgramaItem,
   CanalRankingItem,
   DashboardFilters,
@@ -91,17 +90,6 @@ export async function getCanalProgramas(
 ): Promise<CanalProgramaItem[]> {
   const response = await httpClient.get<CanalProgramaItem[]>(
     `/dashboard/canal/${encodeURIComponent(canalId)}/programas`,
-    { params },
-  );
-  return response.data;
-}
-
-export async function getCanalLiveStats(
-  canalId: string,
-  params: { fecha_inicio?: string; fecha_fin?: string },
-): Promise<CanalLiveStatsResponse> {
-  const response = await httpClient.get<CanalLiveStatsResponse>(
-    `/dashboard/canal/${encodeURIComponent(canalId)}/live-stats`,
     { params },
   );
   return response.data;

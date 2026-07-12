@@ -142,6 +142,36 @@ async def test_kpis_filters_by_programa(client: httpx.AsyncClient, seeded: dict)
     assert body["emisiones"] == 1
 
 
+async def test_kpis_includes_pico_max_y_promedio_vivo(
+    client: httpx.AsyncClient, seeded: dict
+) -> None:
+    """Solo programa_b (Canal Y) tiene pico_max_vivo/promedio_vivo sembrados
+    (1000/800) — MAX/AVG ignoran los null de programa_a y programa_c, así que
+    dentro del rango sembrado (2030-01-01) el resultado debe ser exactamente
+    ese valor, y filtrando por TEST_A (que no tiene el dato) debe dar null.
+    Se acota por fecha (igual que test_kpis_are_visible_to_non_admin_roles)
+    para no mezclar con datos reales ya cargados en la misma base."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+    rango = {"fecha_inicio": "2030-01-01", "fecha_fin": "2030-01-02"}
+
+    sin_filtro_programa = await client.get(
+        f"{DASHBOARD_URL}/kpis", headers=_auth(token), params=rango
+    )
+    assert sin_filtro_programa.status_code == 200
+    body = sin_filtro_programa.json()
+    assert body["pico_max_vivo"] == 1000
+    assert body["promedio_vivo"] == pytest.approx(800)
+
+    filtrado_por_a = await client.get(
+        f"{DASHBOARD_URL}/kpis",
+        headers=_auth(token),
+        params={**rango, "programa": "TEST_A"},
+    )
+    assert filtrado_por_a.status_code == 200
+    assert filtrado_por_a.json()["pico_max_vivo"] is None
+    assert filtrado_por_a.json()["promedio_vivo"] is None
+
+
 async def test_invalid_date_range_returns_422(client: httpx.AsyncClient, seeded: dict) -> None:
     token = await _login(client, "viewer@podpulse.pe", "Valida123")
 

@@ -38,6 +38,13 @@ class KpisResponse(BaseModel):
         description="SUM(Es_Emision) en el rango filtrado (medida DAX Emisiones = SUM(Es_Emision); "
         "Es_Emision es un conteo por día, no un flag — puede haber varias emisiones el mismo día)"
     )
+    pico_max_vivo: int | None = Field(
+        description="MAX(DATA[Pico Max]) en el rango filtrado (programa/canal/fechas) — mismo dato "
+        "que /canal/{canal_id}/live-stats, pero respetando también el filtro de Programa"
+    )
+    promedio_vivo: float | None = Field(
+        description="AVG(DATA[Promedio en Vivo]) en el rango filtrado (programa/canal/fechas)"
+    )
 
 
 class SentimentKpisResponse(BaseModel):

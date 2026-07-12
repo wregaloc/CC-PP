@@ -35,8 +35,8 @@ _AUTH_RESPONSES = {401: {"description": "No autenticado"}}
     "/kpis",
     response_model=KpisResponse,
     summary="KPIs globales",
-    description="Vistas totales, engagement, likes, comentarios y emisiones en el rango filtrado. "
-    "Rol requerido: cualquier usuario autenticado.",
+    description="Vistas totales, engagement, likes, comentarios, emisiones, pico máx en vivo y "
+    "promedio en vivo en el rango filtrado. Rol requerido: cualquier usuario autenticado.",
     responses=_AUTH_RESPONSES,
 )
 async def get_kpis(

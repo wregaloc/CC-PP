@@ -21,6 +21,8 @@ export interface KpisResponse {
   likes: number;
   comentarios: number;
   emisiones: number;
+  pico_max_vivo: number | null;
+  promedio_vivo: number | null;
 }
 
 export interface SentimentKpisResponse {
@@ -68,11 +70,6 @@ export interface CanalProgramaItem {
   programa: string;
   vistas: number;
   pico_max: number | null;
-  promedio_vivo: number | null;
-}
-
-export interface CanalLiveStatsResponse {
-  pico_max_vivo: number | null;
   promedio_vivo: number | null;
 }
 

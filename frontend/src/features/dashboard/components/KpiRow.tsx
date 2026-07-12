@@ -7,7 +7,12 @@ import { useDashboardFilters } from "@/features/dashboard/context/DashboardFilte
 import { useKpis } from "@/features/dashboard/hooks/useKpis";
 
 /** Fila de KPIs principales — Doc-Migración §5.1 "Sección Superior — KPI
- * Cards": Vistas Totales, Engagement Rate, Likes, Comentarios, Emisiones. */
+ * Cards": Vistas Totales, Engagement Rate, Likes, Comentarios, Emisiones,
+ * Pico Max en Vivo y Promedio en Vivo (antes solo visibles en "Detalle de
+ * Canal" de la Página 2, Doc-Migración §5.2). Las 7 tarjetas vienen del
+ * mismo endpoint /dashboard/kpis y respetan los mismos filtros (programa +
+ * canal + fechas) — Pico Max/Promedio ya no dependen exclusivamente de
+ * elegir un canal. */
 export function KpiRow() {
   const { filters } = useDashboardFilters();
   const query = useKpis(filters);
@@ -20,15 +25,15 @@ export function KpiRow() {
         error={query.error}
         onRetry={query.refetch}
         loadingFallback={
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {Array.from({ length: 5 }, (_, i) => (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+            {Array.from({ length: 7 }, (_, i) => (
               <Skeleton key={i} className="h-16 w-full" />
             ))}
           </div>
         }
       >
         {query.data && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
             <KpiCard
               label="Vistas Totales"
               value={formatCompactNumber(query.data.vistas_totales)}
@@ -53,6 +58,24 @@ export function KpiRow() {
               label="Emisiones"
               value={formatCompactNumber(query.data.emisiones)}
               description="SUM(DATA[Es_Emision]) — conteo de emisiones, no un flag sí/no"
+            />
+            <KpiCard
+              label="Pico Max en Vivo"
+              value={
+                query.data.pico_max_vivo !== null
+                  ? formatCompactNumber(query.data.pico_max_vivo)
+                  : "—"
+              }
+              description="MAX(DATA[Pico Max])"
+            />
+            <KpiCard
+              label="Promedio en Vivo"
+              value={
+                query.data.promedio_vivo !== null
+                  ? formatCompactNumber(query.data.promedio_vivo)
+                  : "—"
+              }
+              description="AVG(DATA[Promedio en Vivo])"
             />
           </div>
         )}

@@ -182,7 +182,7 @@ Rol requerido en **todos** estos endpoints: **cualquier usuario autenticado** (a
 Parámetro común a casi todos: `?fecha_inicio&fecha_fin` (ambos opcionales; `422 VALIDATION_ERROR` si `fecha_inicio > fecha_fin`).
 
 ### GET /dashboard/kpis
-`?fecha_inicio&fecha_fin&programa&canal` → `{vistas_totales, engagement_rate, likes, comentarios, emisiones}`. `engagement_rate` es una **fracción 0-1** (no un porcentaje ya multiplicado por 100) — mismo criterio que `score_positivo/negativo/neutral`. `emisiones` = `SUM(Es_Emision)` en el rango (medida DAX `Emisiones = SUM(Es_Emision)`) — `Es_Emision` es un conteo de emisiones por día (puede ser >1), no un booleano.
+`?fecha_inicio&fecha_fin&programa&canal` → `{vistas_totales, engagement_rate, likes, comentarios, emisiones, pico_max_vivo, promedio_vivo}`. `engagement_rate` es una **fracción 0-1** (no un porcentaje ya multiplicado por 100) — mismo criterio que `score_positivo/negativo/neutral`. `emisiones` = `SUM(Es_Emision)` en el rango (medida DAX `Emisiones = SUM(Es_Emision)`) — `Es_Emision` es un conteo de emisiones por día (puede ser >1), no un booleano. `pico_max_vivo`/`promedio_vivo` = `MAX(Pico Max)`/`AVG(Promedio en Vivo)`, mismas fórmulas que `/dashboard/canal/{canal_id}/live-stats` pero respetando también el filtro de `programa` (no solo `canal`) — se usa en el Dashboard para no exigir elegir un canal.
 
 ### GET /dashboard/sentiment-kpis
 `?fecha_inicio&fecha_fin&programa` → `{pct_positivo, pct_negativo, pct_neutral}` (fracciones 0-1). `fact_sentimiento` solo tiene grano (año, mes) — un mes se incluye si se solapa con `[fecha_inicio, fecha_fin]` (no solo si el día 1 del mes cae dentro del rango), así que un rango parcial dentro de un mes (p. ej. 10-20 de abril) igual trae los datos de ese mes completo.

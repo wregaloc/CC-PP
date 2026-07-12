@@ -55,13 +55,18 @@ async def get_kpis(
     session: AsyncSession, filters: DateRangeParams, programa: str | None, canal: str | None
 ) -> dict[str, Any]:
     """TDD §8.3 /dashboard/kpis. Medidas DAX: Vistas Totales=SUM(Vistas_Diarias),
-    Engagement Rate=AVERAGE(Engagement), Emisiones=SUM(Es_Emision)."""
+    Engagement Rate=AVERAGE(Engagement), Emisiones=SUM(Es_Emision), Pico Max en
+    Vivo=MAX(Pico Max), Promedio en Vivo=AVG(Promedio en Vivo) — mismas fórmulas
+    que get_canal_live_stats, pero respetando también el filtro de Programa (no
+    solo Canal), consistente con el resto de KPIs de este endpoint."""
     stmt = select(
         func.coalesce(func.sum(FactAudiencia.vistas_diarias), 0).label("vistas_totales"),
         func.avg(FactAudiencia.engagement).label("engagement_rate"),
         func.coalesce(func.sum(FactAudiencia.likes), 0).label("likes"),
         func.coalesce(func.sum(FactAudiencia.comentarios), 0).label("comentarios"),
         func.coalesce(func.sum(FactAudiencia.es_emision), 0).label("emisiones"),
+        func.max(FactAudiencia.pico_max_vivo).label("pico_max_vivo"),
+        func.avg(FactAudiencia.promedio_vivo).label("promedio_vivo"),
     )
     if programa is not None or canal is not None:
         stmt = stmt.join(Programa, FactAudiencia.programa_id == Programa.id)
@@ -78,6 +83,8 @@ async def get_kpis(
         "likes": row.likes,
         "comentarios": row.comentarios,
         "emisiones": row.emisiones,
+        "pico_max_vivo": row.pico_max_vivo,
+        "promedio_vivo": _as_float(row.promedio_vivo),
     }
 
 
