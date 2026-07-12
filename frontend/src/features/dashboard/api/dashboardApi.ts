@@ -3,8 +3,6 @@ import { httpClient } from "@/lib/httpClient";
 import type {
   AuspicioBusquedaItem,
   AuspicioOut,
-  CanalProgramaItem,
-  CanalRankingItem,
   DashboardFilters,
   EvolutivoPoint,
   Formato,
@@ -78,28 +76,6 @@ export async function getRankingProgramas(params: {
   const response = await httpClient.get<ProgramaRankingItem[]>("/dashboard/ranking/programas", {
     params,
   });
-  return response.data;
-}
-
-export async function getRankingCanales(params: {
-  fecha_inicio?: string;
-  fecha_fin?: string;
-  limit?: number;
-}): Promise<CanalRankingItem[]> {
-  const response = await httpClient.get<CanalRankingItem[]>("/dashboard/ranking/canales", {
-    params,
-  });
-  return response.data;
-}
-
-export async function getCanalProgramas(
-  canalId: string,
-  params: { fecha_inicio?: string; fecha_fin?: string; categoria?: string },
-): Promise<CanalProgramaItem[]> {
-  const response = await httpClient.get<CanalProgramaItem[]>(
-    `/dashboard/canal/${encodeURIComponent(canalId)}/programas`,
-    { params },
-  );
   return response.data;
 }
 

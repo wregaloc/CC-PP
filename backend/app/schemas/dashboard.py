@@ -39,8 +39,7 @@ class KpisResponse(BaseModel):
         "Es_Emision es un conteo por día, no un flag — puede haber varias emisiones el mismo día)"
     )
     pico_max_vivo: int | None = Field(
-        description="MAX(DATA[Pico Max]) en el rango filtrado (programa/canal/fechas) — mismo dato "
-        "que /canal/{canal_id}/live-stats, pero respetando también el filtro de Programa"
+        description="MAX(DATA[Pico Max]) en el rango filtrado (programa/canal/fechas)"
     )
     promedio_vivo: float | None = Field(
         description="AVG(DATA[Promedio en Vivo]) en el rango filtrado (programa/canal/fechas)"
@@ -82,24 +81,6 @@ class ProgramaRankingItem(BaseModel):
     tipo: ProgramType | None = Field(description="DATA[Tipo]: podcast | programa (puede ser null)")
     vistas_totales: int
     ranking: int = Field(description="DENSE_RANK sobre vistas_totales DESC")
-
-
-class CanalRankingItem(BaseModel):
-    canal: str
-    vistas_totales: int
-    ranking: int
-
-
-class CanalProgramaItem(BaseModel):
-    programa: str
-    vistas: int
-    pico_max: int | None
-    promedio_vivo: float | None
-
-
-class CanalLiveStatsResponse(BaseModel):
-    pico_max_vivo: int | None
-    promedio_vivo: float | None
 
 
 class KeywordOut(BaseModel):

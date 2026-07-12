@@ -378,45 +378,6 @@ async def test_ranking_programas_filters_by_formato(
     assert body[0]["vistas_totales"] == 100  # solo la fila "Vivo", no las 900 de "Grabado"
 
 
-async def test_ranking_canales(client: httpx.AsyncClient, seeded: dict) -> None:
-    token = await _login(client, "viewer@podpulse.pe", "Valida123")
-
-    response = await client.get(
-        f"{DASHBOARD_URL}/ranking/canales",
-        headers=_auth(token),
-        params={"fecha_inicio": "2030-01-01", "fecha_fin": "2030-01-02"},
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    by_name = {item["canal"]: item for item in body}
-    assert by_name["Canal Y"]["vistas_totales"] == 500
-    assert by_name["Canal X"]["vistas_totales"] == 600
-    assert by_name["Canal X"]["ranking"] == 1
-    assert by_name["Canal Y"]["ranking"] == 2
-
-
-async def test_canal_programas_uses_canal_name_as_path_param(
-    client: httpx.AsyncClient, seeded: dict
-) -> None:
-    token = await _login(client, "viewer@podpulse.pe", "Valida123")
-
-    response = await client.get(f"{DASHBOARD_URL}/canal/Canal Y/programas", headers=_auth(token))
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body == [{"programa": "TEST_B", "vistas": 500, "pico_max": 1000, "promedio_vivo": 800.0}]
-
-
-async def test_canal_live_stats(client: httpx.AsyncClient, seeded: dict) -> None:
-    token = await _login(client, "viewer@podpulse.pe", "Valida123")
-
-    response = await client.get(f"{DASHBOARD_URL}/canal/Canal Y/live-stats", headers=_auth(token))
-
-    assert response.status_code == 200
-    assert response.json() == {"pico_max_vivo": 1000, "promedio_vivo": 800.0}
-
-
 async def test_keywords_filters_by_sentimiento_and_orders_by_occurrences(
     client: httpx.AsyncClient, seeded: dict
 ) -> None:

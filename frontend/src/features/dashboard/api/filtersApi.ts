@@ -16,8 +16,3 @@ export async function getFilterPeriodos(): Promise<PeriodoDisponibleResponse> {
   const response = await httpClient.get<PeriodoDisponibleResponse>("/filters/periodos");
   return response.data;
 }
-
-export async function getFilterCategorias(): Promise<string[]> {
-  const response = await httpClient.get<string[]>("/filters/categorias");
-  return response.data;
-}

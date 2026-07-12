@@ -10,9 +10,6 @@ from app.repositories import dashboard_repository
 from app.schemas.dashboard import (
     AuspicioBusquedaItem,
     AuspicioOut,
-    CanalLiveStatsResponse,
-    CanalProgramaItem,
-    CanalRankingItem,
     EvolutivoPoint,
     Granularidad,
     KeywordOut,
@@ -82,27 +79,6 @@ async def get_ranking_programas(
     return [ProgramaRankingItem(**item) for item in items]
 
 
-async def get_ranking_canales(
-    session: AsyncSession, filters: DateRangeParams, limit: int
-) -> list[CanalRankingItem]:
-    items = await dashboard_repository.get_ranking_canales(session, filters, limit)
-    return [CanalRankingItem(**item) for item in items]
-
-
-async def get_canal_programas(
-    session: AsyncSession, canal: str, filters: DateRangeParams, categoria: str | None
-) -> list[CanalProgramaItem]:
-    items = await dashboard_repository.get_canal_programas(session, canal, filters, categoria)
-    return [CanalProgramaItem(**item) for item in items]
-
-
-async def get_canal_live_stats(
-    session: AsyncSession, canal: str, filters: DateRangeParams
-) -> CanalLiveStatsResponse:
-    data = await dashboard_repository.get_canal_live_stats(session, canal, filters)
-    return CanalLiveStatsResponse(**data)
-
-
 async def get_keywords(
     session: AsyncSession,
     programa: str | None,
@@ -127,10 +103,6 @@ async def get_filter_programas(session: AsyncSession) -> list[str]:
 
 async def get_filter_canales(session: AsyncSession) -> list[str]:
     return await dashboard_repository.get_filter_canales(session)
-
-
-async def get_filter_categorias(session: AsyncSession) -> list[str]:
-    return await dashboard_repository.get_filter_categorias(session)
 
 
 async def get_filter_periodos(session: AsyncSession) -> PeriodoDisponibleResponse:

@@ -12,9 +12,6 @@ from app.models.user import User
 from app.schemas.dashboard import (
     AuspicioBusquedaItem,
     AuspicioOut,
-    CanalLiveStatsResponse,
-    CanalProgramaItem,
-    CanalRankingItem,
     EvolutivoPoint,
     Granularidad,
     KeywordOut,
@@ -144,58 +141,6 @@ async def get_ranking_programas(
     return await dashboard_service.get_ranking_programas(
         session, filters, canal, tipo, formato, limit
     )
-
-
-@router.get(
-    "/ranking/canales",
-    response_model=list[CanalRankingItem],
-    summary="Ranking de canales por vistas",
-    description="Rol requerido: cualquier usuario autenticado.",
-    responses=_AUTH_RESPONSES,
-)
-async def get_ranking_canales(
-    limit: int = Query(default=20, ge=1, le=100),
-    filters: DateRangeParams = Depends(date_range_params),
-    user: User = Depends(require_authenticated),
-    session: AsyncSession = Depends(get_db),
-) -> list[CanalRankingItem]:
-    return await dashboard_service.get_ranking_canales(session, filters, limit)
-
-
-@router.get(
-    "/canal/{canal_id}/programas",
-    response_model=list[CanalProgramaItem],
-    summary="Programas de un canal",
-    description="`canal_id` es el nombre del canal (no existe una tabla de canales separada "
-    "en el esquema — ver docs/API.md, sección de supuestos). Rol requerido: cualquier usuario "
-    "autenticado.",
-    responses=_AUTH_RESPONSES,
-)
-async def get_canal_programas(
-    canal_id: str,
-    categoria: str | None = Query(default=None),
-    filters: DateRangeParams = Depends(date_range_params),
-    user: User = Depends(require_authenticated),
-    session: AsyncSession = Depends(get_db),
-) -> list[CanalProgramaItem]:
-    return await dashboard_service.get_canal_programas(session, canal_id, filters, categoria)
-
-
-@router.get(
-    "/canal/{canal_id}/live-stats",
-    response_model=CanalLiveStatsResponse,
-    summary="Estadísticas de audiencia en vivo de un canal",
-    description="`canal_id` es el nombre del canal (ver nota en /canal/{canal_id}/programas). "
-    "Rol requerido: cualquier usuario autenticado.",
-    responses=_AUTH_RESPONSES,
-)
-async def get_canal_live_stats(
-    canal_id: str,
-    filters: DateRangeParams = Depends(date_range_params),
-    user: User = Depends(require_authenticated),
-    session: AsyncSession = Depends(get_db),
-) -> CanalLiveStatsResponse:
-    return await dashboard_service.get_canal_live_stats(session, canal_id, filters)
 
 
 @router.get(

@@ -15,16 +15,10 @@ import { ProtectedRoute } from "@/app/ProtectedRoute";
 const DashboardPage = lazy(() =>
   import("@/features/dashboard/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
 );
-const EvolutivoDetalladoPage = lazy(() =>
-  import("@/features/dashboard/pages/EvolutivoDetalladoPage").then((m) => ({
-    default: m.EvolutivoDetalladoPage,
-  })),
-);
 
 /**
  * Árbol de rutas de la app. `/` es la Página 1 del dashboard (Fase 8, ver
- * Doc-Migración §5.1), `/evolutivo-detallado` es la Página 2 (Fase 9, ver
- * Doc-Migración §5.2) — AdminPlaceholderPage sigue pendiente de una fase futura.
+ * Doc-Migración §5.1) — AdminPlaceholderPage sigue pendiente de una fase futura.
  */
 export const router = createBrowserRouter([
   {
@@ -42,14 +36,6 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<FullPageSpinner />}>
                 <DashboardPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/evolutivo-detallado",
-            element: (
-              <Suspense fallback={<FullPageSpinner />}>
-                <EvolutivoDetalladoPage />
               </Suspense>
             ),
           },

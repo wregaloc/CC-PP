@@ -68,19 +68,6 @@ export interface ProgramaRankingItem {
 
 export type Formato = "Grabado" | "Vivo" | "Finalizado";
 
-export interface CanalRankingItem {
-  canal: string;
-  vistas_totales: number;
-  ranking: number;
-}
-
-export interface CanalProgramaItem {
-  programa: string;
-  vistas: number;
-  pico_max: number | null;
-  promedio_vivo: number | null;
-}
-
 export interface KeywordOut {
   hashtag: string;
   occurrences: number;

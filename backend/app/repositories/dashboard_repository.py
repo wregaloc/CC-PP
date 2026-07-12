@@ -56,9 +56,8 @@ async def get_kpis(
 ) -> dict[str, Any]:
     """TDD §8.3 /dashboard/kpis. Medidas DAX: Vistas Totales=SUM(Vistas_Diarias),
     Engagement Rate=AVERAGE(Engagement), Emisiones=SUM(Es_Emision), Pico Max en
-    Vivo=MAX(Pico Max), Promedio en Vivo=AVG(Promedio en Vivo) — mismas fórmulas
-    que get_canal_live_stats, pero respetando también el filtro de Programa (no
-    solo Canal), consistente con el resto de KPIs de este endpoint."""
+    Vivo=MAX(Pico Max), Promedio en Vivo=AVG(Promedio en Vivo), todas respetando
+    Programa + Canal + fechas."""
     stmt = select(
         func.coalesce(func.sum(FactAudiencia.vistas_diarias), 0).label("vistas_totales"),
         func.avg(FactAudiencia.engagement).label("engagement_rate"),
@@ -285,84 +284,6 @@ async def get_ranking_programas(
     return [dict(row._mapping) for row in result.all()]
 
 
-async def get_ranking_canales(
-    session: AsyncSession, filters: DateRangeParams, limit: int
-) -> list[dict[str, Any]]:
-    """TDD §8.5 /dashboard/ranking/canales. Medida DAX "Ranking Dinamico" (ídem
-    Ranking Programas pero agrupado por Canal)."""
-    vistas_col = func.coalesce(func.sum(FactAudiencia.vistas_diarias), 0)
-    ranking_col = func.dense_rank().over(order_by=vistas_col.desc())
-
-    stmt = (
-        select(
-            Programa.canal.label("canal"),
-            vistas_col.label("vistas_totales"),
-            ranking_col.label("ranking"),
-        )
-        .join(Programa, FactAudiencia.programa_id == Programa.id)
-        .group_by(Programa.canal)
-    )
-    stmt = _apply_date_range(stmt, FactAudiencia.fecha, filters)
-    stmt = stmt.order_by(vistas_col.desc()).limit(limit)
-
-    result = await session.execute(stmt)
-    return [dict(row._mapping) for row in result.all()]
-
-
-async def get_canal_programas(
-    session: AsyncSession, canal: str, filters: DateRangeParams, categoria: str | None
-) -> list[dict[str, Any]]:
-    """TDD §8.5 /dashboard/canal/{canal_id}/programas. `pico_max`=MAX (confirmado
-    en Doc-Migración §5.2: "PICO MAX EN VIVO: MAX de DATA[Pico Max]"). `promedio_vivo`
-    se interpreta como AVG (no hay medida DAX explícita para el agregado — ver
-    docs/API.md, sección de supuestos, para el detalle de esta decisión)."""
-    stmt = (
-        select(
-            Programa.nombre.label("programa"),
-            func.coalesce(func.sum(FactAudiencia.vistas_diarias), 0).label("vistas"),
-            func.max(FactAudiencia.pico_max_vivo).label("pico_max"),
-            func.avg(FactAudiencia.promedio_vivo).label("promedio_vivo"),
-        )
-        .join(Programa, FactAudiencia.programa_id == Programa.id)
-        .where(Programa.canal == canal)
-        .group_by(Programa.nombre)
-    )
-    if categoria is not None:
-        stmt = stmt.where(Programa.categoria == categoria)
-    stmt = _apply_date_range(stmt, FactAudiencia.fecha, filters)
-    stmt = stmt.order_by(func.coalesce(func.sum(FactAudiencia.vistas_diarias), 0).desc())
-
-    result = await session.execute(stmt)
-    return [
-        {
-            "programa": row.programa,
-            "vistas": row.vistas,
-            "pico_max": row.pico_max,
-            "promedio_vivo": _as_float(row.promedio_vivo),
-        }
-        for row in result.all()
-    ]
-
-
-async def get_canal_live_stats(
-    session: AsyncSession, canal: str, filters: DateRangeParams
-) -> dict[str, Any]:
-    """TDD §8.5 /dashboard/canal/{canal_id}/live-stats — mismas fórmulas que
-    get_canal_programas, sin agrupar por programa (todo el canal)."""
-    stmt = (
-        select(
-            func.max(FactAudiencia.pico_max_vivo).label("pico_max_vivo"),
-            func.avg(FactAudiencia.promedio_vivo).label("promedio_vivo"),
-        )
-        .join(Programa, FactAudiencia.programa_id == Programa.id)
-        .where(Programa.canal == canal)
-    )
-    stmt = _apply_date_range(stmt, FactAudiencia.fecha, filters)
-
-    row = (await session.execute(stmt)).one()
-    return {"pico_max_vivo": row.pico_max_vivo, "promedio_vivo": _as_float(row.promedio_vivo)}
-
-
 async def get_keywords(
     session: AsyncSession,
     programa: str | None,
@@ -453,16 +374,6 @@ async def get_filter_programas(session: AsyncSession) -> list[str]:
 
 async def get_filter_canales(session: AsyncSession) -> list[str]:
     result = await session.execute(select(Programa.canal).distinct().order_by(Programa.canal))
-    return list(result.scalars().all())
-
-
-async def get_filter_categorias(session: AsyncSession) -> list[str]:
-    result = await session.execute(
-        select(Programa.categoria)
-        .distinct()
-        .where(Programa.categoria.is_not(None))
-        .order_by(Programa.categoria)
-    )
     return list(result.scalars().all())
 
 
