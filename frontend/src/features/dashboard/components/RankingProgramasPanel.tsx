@@ -46,7 +46,7 @@ const TIPO_TABS: { value: ProgramType | ""; label: string }[] = [
  * el cliente: la base tiene 1000+ programas y este panel solo trae el top
  * 100 por vistas, así que un programa fuera de ese top 100 era imposible de
  * encontrar filtrando solo lo ya traído. */
-export function RankingProgramasPanel() {
+export function RankingProgramasPanel({ className }: { className?: string }) {
   const { filters, setPrograma } = useDashboardFilters();
   const [formato, setFormato] = useState<Formato | "">("");
   const [tipo, setTipo] = useState<ProgramType | "">("");
@@ -90,6 +90,7 @@ export function RankingProgramasPanel() {
   return (
     <DashboardCard
       title="Ranking de Programas por Vistas Totales"
+      className={className}
       action={
         <div className={TAB_GROUP_CLASS} role="tablist" aria-label="Filtrar por formato">
           {FORMATO_TABS.map((tab) => (
@@ -187,7 +188,7 @@ export function RankingProgramasPanel() {
                   type="category"
                   dataKey="programa"
                   width={140}
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: "#f5f5f5" }}
                   interval={0}
                 />
                 <Tooltip formatter={(value: number) => formatCompactNumber(value)} />

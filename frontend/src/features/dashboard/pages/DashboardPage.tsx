@@ -26,12 +26,12 @@ export function DashboardPage() {
         <FilterBar />
         <KpiRow />
 
+        <EvolutivoDetalladoChart />
+
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <EvolutivoDetalladoChart />
+          <RankingProgramasPanel className="md:col-span-2" />
           <AuspiciosPanel />
         </div>
-
-        <RankingProgramasPanel />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <KeywordsCloud />

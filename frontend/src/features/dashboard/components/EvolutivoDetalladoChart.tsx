@@ -100,7 +100,6 @@ export function EvolutivoDetalladoChart() {
   return (
     <DashboardCard
       title="Evolutivo Detallado"
-      className="md:col-span-2"
       action={
         <div className="flex flex-wrap items-center gap-3">
           <div className={TAB_GROUP_CLASS} role="tablist" aria-label="Granularidad temporal">
