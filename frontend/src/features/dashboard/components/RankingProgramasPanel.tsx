@@ -62,7 +62,18 @@ export function RankingProgramasPanel() {
     return term ? data.filter((item) => item.programa.toLowerCase().includes(term)) : data;
   }, [query.data, search]);
 
-  const chartData = filtered.slice(0, MAX_BARS_SHOWN);
+  // El gráfico solo muestra el top N por espacio, así que si el programa
+  // filtrado arriba queda fuera de ese top N, se agrega igual al final —
+  // si no, seleccionar un programa "de cola" no mostraba ningún cambio
+  // visible acá (aunque el resto del dashboard sí filtraba por él).
+  const chartData = useMemo(() => {
+    const top = filtered.slice(0, MAX_BARS_SHOWN);
+    if (!filters.programa || top.some((item) => item.programa === filters.programa)) {
+      return top;
+    }
+    const seleccionado = filtered.find((item) => item.programa === filters.programa);
+    return seleccionado ? [...top, seleccionado] : top;
+  }, [filtered, filters.programa]);
 
   return (
     <DashboardCard
