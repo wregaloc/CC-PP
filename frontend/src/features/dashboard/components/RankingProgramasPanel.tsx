@@ -59,6 +59,18 @@ export function RankingProgramasPanel({ className }: { className?: string }) {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // El buscador es estado local (no vive en DashboardFiltersContext), así
+  // que "Limpiar filtros" en la barra superior no lo tocaba por sí solo: el
+  // programa filtrado se limpiaba pero el `q` local seguía acotando este
+  // panel a lo último buscado. Se limpia en cuanto `filters.programa` queda
+  // vacío (por "Limpiar filtros" o por elegir "Todos" manualmente).
+  useEffect(() => {
+    if (!filters.programa) {
+      setSearch("");
+      setDebouncedSearch("");
+    }
+  }, [filters.programa]);
+
   const q = debouncedSearch.length >= MIN_SEARCH_LENGTH ? debouncedSearch : undefined;
 
   const query = useRankingProgramas({
