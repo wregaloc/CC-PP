@@ -65,6 +65,7 @@ export function RankingProgramasPanel({ className }: { className?: string }) {
     fecha_inicio: filters.fecha_inicio,
     fecha_fin: filters.fecha_fin,
     canal: filters.canal,
+    categoria: filters.categoria,
     formato: formato || undefined,
     tipo: tipo || undefined,
     limit: 100,

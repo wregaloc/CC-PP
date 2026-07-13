@@ -41,11 +41,12 @@ _AUTH_RESPONSES = {401: {"description": "No autenticado"}}
 async def get_kpis(
     programa: str | None = Query(default=None, description="Nombre exacto del programa"),
     canal: str | None = Query(default=None, description="Nombre exacto del canal"),
+    categoria: str | None = Query(default=None, description="Nombre exacto de la categoría"),
     filters: DateRangeParams = Depends(date_range_params),
     user: User = Depends(require_authenticated),
     session: AsyncSession = Depends(get_db),
 ) -> KpisResponse:
-    return await dashboard_service.get_kpis(session, filters, programa, canal)
+    return await dashboard_service.get_kpis(session, filters, programa, canal, categoria)
 
 
 @router.get(
@@ -132,12 +133,13 @@ async def get_evolutivo(
     metrica_secundaria: MetricaSecundaria = Query(description="emisiones | busquedas"),
     programa: str | None = Query(default=None, description="Nombre exacto del programa"),
     canal: str | None = Query(default=None, description="Nombre exacto del canal"),
+    categoria: str | None = Query(default=None, description="Nombre exacto de la categoría"),
     filters: DateRangeParams = Depends(date_range_params),
     user: User = Depends(require_authenticated),
     session: AsyncSession = Depends(get_db),
 ) -> list[EvolutivoPoint]:
     return await dashboard_service.get_evolutivo(
-        session, filters, granularidad, metrica_secundaria, programa, canal
+        session, filters, granularidad, metrica_secundaria, programa, canal, categoria
     )
 
 
@@ -162,12 +164,13 @@ async def get_ranking_programas(
     programa_asegurado: str | None = Query(
         default=None, description="Nombre exacto a incluir aunque quede fuera del top `limit`"
     ),
+    categoria: str | None = Query(default=None, description="Nombre exacto de la categoría"),
     filters: DateRangeParams = Depends(date_range_params),
     user: User = Depends(require_authenticated),
     session: AsyncSession = Depends(get_db),
 ) -> list[ProgramaRankingItem]:
     return await dashboard_service.get_ranking_programas(
-        session, filters, canal, tipo, formato, limit, q, programa_asegurado
+        session, filters, canal, tipo, formato, limit, q, programa_asegurado, categoria
     )
 
 

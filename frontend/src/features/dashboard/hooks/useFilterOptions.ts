@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import {
   getFilterCanales,
+  getFilterCategorias,
   getFilterPeriodos,
   getFilterProgramas,
 } from "@/features/dashboard/api/filtersApi";
@@ -12,6 +13,14 @@ export function useFilterProgramas() {
 
 export function useFilterCanales() {
   return useQuery({ queryKey: ["filters", "canales"], queryFn: getFilterCanales, staleTime: 5 * 60_000 });
+}
+
+export function useFilterCategorias() {
+  return useQuery({
+    queryKey: ["filters", "categorias"],
+    queryFn: getFilterCategorias,
+    staleTime: 5 * 60_000,
+  });
 }
 
 export function useFilterPeriodos() {

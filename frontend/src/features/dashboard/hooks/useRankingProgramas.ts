@@ -12,6 +12,7 @@ export function useRankingProgramas(params: {
   limit?: number;
   q?: string;
   programa_asegurado?: string;
+  categoria?: string;
 }) {
   return useQuery({
     queryKey: ["dashboard", "ranking-programas", params],

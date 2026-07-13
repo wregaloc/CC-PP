@@ -52,12 +52,16 @@ def _as_float(value: Any) -> float | None:
 
 
 async def get_kpis(
-    session: AsyncSession, filters: DateRangeParams, programa: str | None, canal: str | None
+    session: AsyncSession,
+    filters: DateRangeParams,
+    programa: str | None,
+    canal: str | None,
+    categoria: str | None = None,
 ) -> dict[str, Any]:
     """TDD §8.3 /dashboard/kpis. Medidas DAX: Vistas Totales=SUM(Vistas_Diarias),
     Engagement Rate=AVERAGE(Engagement), Emisiones=SUM(Es_Emision), Pico Max en
     Vivo=MAX(Pico Max), Promedio en Vivo=AVG(Promedio en Vivo), todas respetando
-    Programa + Canal + fechas."""
+    Programa + Canal + Categoría + fechas."""
     stmt = select(
         func.coalesce(func.sum(FactAudiencia.vistas_diarias), 0).label("vistas_totales"),
         func.avg(FactAudiencia.engagement).label("engagement_rate"),
@@ -67,12 +71,14 @@ async def get_kpis(
         func.max(FactAudiencia.pico_max_vivo).label("pico_max_vivo"),
         func.avg(FactAudiencia.promedio_vivo).label("promedio_vivo"),
     )
-    if programa is not None or canal is not None:
+    if programa is not None or canal is not None or categoria is not None:
         stmt = stmt.join(Programa, FactAudiencia.programa_id == Programa.id)
         if programa is not None:
             stmt = stmt.where(Programa.nombre == programa)
         if canal is not None:
             stmt = stmt.where(Programa.canal == canal)
+        if categoria is not None:
+            stmt = stmt.where(Programa.categoria == categoria)
     stmt = _apply_date_range(stmt, FactAudiencia.fecha, filters)
 
     row = (await session.execute(stmt)).one()
@@ -199,6 +205,7 @@ async def get_evolutivo(
     metrica_secundaria: MetricaSecundaria,
     programa: str | None,
     canal: str | None,
+    categoria: str | None = None,
 ) -> list[dict[str, Any]]:
     """TDD §8.4 /dashboard/evolutivo. Reemplaza la medida "KPI Vistas Promedio
     Dinámico" (que usaba CONTAINSSTRING sobre el parámetro GRANULARIDAD — TDD
@@ -225,12 +232,14 @@ async def get_evolutivo(
         *group_cols, vistas_col.label("vistas_totales"), secondary_col.label("metrica_secundaria")
     )
 
-    if programa is not None or canal is not None:
+    if programa is not None or canal is not None or categoria is not None:
         stmt = stmt.join(Programa, FactAudiencia.programa_id == Programa.id)
         if programa is not None:
             stmt = stmt.where(Programa.nombre == programa)
         if canal is not None:
             stmt = stmt.where(Programa.canal == canal)
+        if categoria is not None:
+            stmt = stmt.where(Programa.categoria == categoria)
     stmt = _apply_date_range(stmt, FactAudiencia.fecha, filters)
     stmt = stmt.group_by(*group_cols).order_by(*group_cols)
 
@@ -267,6 +276,7 @@ async def get_ranking_programas(
     limit: int,
     q: str | None = None,
     programa_asegurado: str | None = None,
+    categoria: str | None = None,
 ) -> list[dict[str, Any]]:
     """TDD §8.5 /dashboard/ranking/programas. Medida DAX "Ranking Programas":
     RANKX ... Dense sobre Vistas Totales DESC → DENSE_RANK() (empates comparten
@@ -318,6 +328,8 @@ async def get_ranking_programas(
         base = base.where(FactAudiencia.formato == formato)
     if q is not None:
         base = base.where(Programa.nombre.ilike(f"%{q}%"))
+    if categoria is not None:
+        base = base.where(Programa.categoria == categoria)
     base = _apply_date_range(base, FactAudiencia.fecha, filters)
 
     ranked = base.subquery()
@@ -420,6 +432,19 @@ async def get_filter_programas(session: AsyncSession) -> list[str]:
 
 async def get_filter_canales(session: AsyncSession) -> list[str]:
     result = await session.execute(select(Programa.canal).distinct().order_by(Programa.canal))
+    return list(result.scalars().all())
+
+
+async def get_filter_categorias(session: AsyncSession) -> list[str]:
+    """`categoria` es nullable en dim_programa (a diferencia de `canal`) —
+    se excluyen los nulos, ya no tiene sentido como opción de filtro."""
+    stmt = (
+        select(Programa.categoria)
+        .where(Programa.categoria.is_not(None))
+        .distinct()
+        .order_by(Programa.categoria)
+    )
+    result = await session.execute(stmt)
     return list(result.scalars().all())
 
 

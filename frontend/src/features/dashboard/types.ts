@@ -8,6 +8,7 @@ export interface DateRangeFilter {
 export interface DashboardFilters extends DateRangeFilter {
   programa?: string;
   canal?: string;
+  categoria?: string;
 }
 
 export type Granularidad = "anio" | "mes" | "semana" | "dia";

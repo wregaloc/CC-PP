@@ -25,9 +25,13 @@ from app.schemas.dashboard import (
 
 
 async def get_kpis(
-    session: AsyncSession, filters: DateRangeParams, programa: str | None, canal: str | None
+    session: AsyncSession,
+    filters: DateRangeParams,
+    programa: str | None,
+    canal: str | None,
+    categoria: str | None = None,
 ) -> KpisResponse:
-    data = await dashboard_repository.get_kpis(session, filters, programa, canal)
+    data = await dashboard_repository.get_kpis(session, filters, programa, canal, categoria)
     return KpisResponse(**data)
 
 
@@ -64,9 +68,10 @@ async def get_evolutivo(
     metrica_secundaria: MetricaSecundaria,
     programa: str | None,
     canal: str | None,
+    categoria: str | None = None,
 ) -> list[EvolutivoPoint]:
     points = await dashboard_repository.get_evolutivo(
-        session, filters, granularidad, metrica_secundaria, programa, canal
+        session, filters, granularidad, metrica_secundaria, programa, canal, categoria
     )
     return [EvolutivoPoint(**point) for point in points]
 
@@ -80,9 +85,10 @@ async def get_ranking_programas(
     limit: int,
     q: str | None = None,
     programa_asegurado: str | None = None,
+    categoria: str | None = None,
 ) -> list[ProgramaRankingItem]:
     items = await dashboard_repository.get_ranking_programas(
-        session, filters, canal, tipo, formato, limit, q, programa_asegurado
+        session, filters, canal, tipo, formato, limit, q, programa_asegurado, categoria
     )
     return [ProgramaRankingItem(**item) for item in items]
 
@@ -111,6 +117,10 @@ async def get_filter_programas(session: AsyncSession) -> list[str]:
 
 async def get_filter_canales(session: AsyncSession) -> list[str]:
     return await dashboard_repository.get_filter_canales(session)
+
+
+async def get_filter_categorias(session: AsyncSession) -> list[str]:
+    return await dashboard_repository.get_filter_categorias(session)
 
 
 async def get_filter_periodos(session: AsyncSession) -> PeriodoDisponibleResponse:

@@ -41,6 +41,20 @@ async def get_filter_canales(
 
 
 @router.get(
+    "/categorias",
+    response_model=list[str],
+    summary="Categorías disponibles",
+    description="Rol requerido: cualquier usuario autenticado.",
+    responses=_AUTH_RESPONSES,
+)
+async def get_filter_categorias(
+    user: User = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db),
+) -> list[str]:
+    return await dashboard_service.get_filter_categorias(session)
+
+
+@router.get(
     "/periodos",
     response_model=PeriodoDisponibleResponse,
     summary="Rango de fechas disponible",

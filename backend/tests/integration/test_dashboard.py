@@ -143,6 +143,25 @@ async def test_kpis_filters_by_programa(client: httpx.AsyncClient, seeded: dict)
     assert body["emisiones"] == 1
 
 
+async def test_kpis_filters_by_categoria(client: httpx.AsyncClient, seeded: dict) -> None:
+    """programa_a y programa_b son categoria="Cat1" (300+500=800 vistas);
+    programa_c es "Cat2" (300 vistas) — ver fixture `seeded`. Se acota por
+    fecha (2030, exclusivo de los datos sembrados) porque "Cat1"/"Cat2" no
+    son nombres únicos como "TEST_A" — sin esto el total podría mezclarse
+    con categorías reales de la base de dev (mismo riesgo ya visto en
+    test_ranking_programas_programa_asegurado_included_beyond_limit)."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/kpis",
+        headers=_auth(token),
+        params={"categoria": "Cat1", "fecha_inicio": "2030-01-01", "fecha_fin": "2030-01-02"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["vistas_totales"] == 800
+
+
 async def test_kpis_includes_pico_max_y_promedio_vivo(
     client: httpx.AsyncClient, seeded: dict
 ) -> None:
@@ -467,6 +486,44 @@ async def test_ranking_programas_filters_by_formato(
     assert len(body) == 1
     assert body[0]["programa"] == "TEST_FORMATO"
     assert body[0]["vistas_totales"] == 100  # solo la fila "Vivo", no las 900 de "Grabado"
+
+
+async def test_ranking_programas_filters_by_categoria(
+    client: httpx.AsyncClient, db_session: AsyncSession, make_programa, make_user
+) -> None:
+    await make_user(email="viewer-categoria@podpulse.pe", password="Valida123", role=UserRole.CLIENTE)
+    token = await _login(client, "viewer-categoria@podpulse.pe", "Valida123")
+    con_categoria = await make_programa(
+        "TEST_CAT_A", "Canal Categoria", categoria="TEST_CATEGORIA_X", tipo=ProgramType.PODCAST
+    )
+    otra_categoria = await make_programa(
+        "TEST_CAT_B", "Canal Categoria", categoria="TEST_CATEGORIA_Y", tipo=ProgramType.PODCAST
+    )
+    db_session.add_all(
+        [
+            FactAudiencia(
+                fecha=date(2030, 3, 1), mes_num=3, anio=2030, semana_num=9,
+                programa_id=con_categoria.id, es_emision=0, vistas_diarias=100,
+            ),
+            FactAudiencia(
+                fecha=date(2030, 3, 1), mes_num=3, anio=2030, semana_num=9,
+                programa_id=otra_categoria.id, es_emision=0, vistas_diarias=900,
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/ranking/programas",
+        headers=_auth(token),
+        params={"canal": "Canal Categoria", "categoria": "TEST_CATEGORIA_X"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["programa"] == "TEST_CAT_A"
+    assert body[0]["vistas_totales"] == 100
 
 
 async def test_keywords_filters_by_sentimiento_and_orders_by_occurrences(

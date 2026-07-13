@@ -8,6 +8,7 @@ interface DashboardFiltersContextValue {
   setFechaFin: (value: string | undefined) => void;
   setPrograma: (value: string | undefined) => void;
   setCanal: (value: string | undefined) => void;
+  setCategoria: (value: string | undefined) => void;
   clearFilters: () => void;
 }
 
@@ -25,22 +26,25 @@ export function DashboardFiltersProvider({ children }: { children: ReactNode }) 
   const [fechaFin, setFechaFin] = useState<string | undefined>(undefined);
   const [programa, setPrograma] = useState<string | undefined>(undefined);
   const [canal, setCanal] = useState<string | undefined>(undefined);
+  const [categoria, setCategoria] = useState<string | undefined>(undefined);
 
   const value = useMemo<DashboardFiltersContextValue>(
     () => ({
-      filters: { fecha_inicio: fechaInicio, fecha_fin: fechaFin, programa, canal },
+      filters: { fecha_inicio: fechaInicio, fecha_fin: fechaFin, programa, canal, categoria },
       setFechaInicio,
       setFechaFin,
       setPrograma,
       setCanal,
+      setCategoria,
       clearFilters: () => {
         setFechaInicio(undefined);
         setFechaFin(undefined);
         setPrograma(undefined);
         setCanal(undefined);
+        setCategoria(undefined);
       },
     }),
-    [fechaInicio, fechaFin, programa, canal],
+    [fechaInicio, fechaFin, programa, canal, categoria],
   );
 
   return (

@@ -74,6 +74,17 @@ async def test_filter_canales_includes_seeded_canal(
     assert "Canal Filtros" in response.json()
 
 
+async def test_filter_categorias_includes_seeded_categoria(
+    client: httpx.AsyncClient, seeded: None
+) -> None:
+    token = await _login(client, "filters-viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(f"{FILTERS_URL}/categorias", headers=_auth(token))
+
+    assert response.status_code == 200
+    assert "CatFiltros" in response.json()
+
+
 async def test_filter_periodos_covers_seeded_date_range(
     client: httpx.AsyncClient, seeded: None
 ) -> None:

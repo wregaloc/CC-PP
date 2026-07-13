@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
-import { useFilterCanales, useFilterPeriodos, useFilterProgramas } from "@/features/dashboard/hooks/useFilterOptions";
+import {
+  useFilterCanales,
+  useFilterCategorias,
+  useFilterPeriodos,
+  useFilterProgramas,
+} from "@/features/dashboard/hooks/useFilterOptions";
 import { Button } from "@/components/ui/Button";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
 
@@ -21,10 +26,11 @@ function toUndefined(value: string): string | undefined {
  * controles) — solo un efecto visual de "recede" para no tapar el contenido.
  */
 export function FilterBar() {
-  const { filters, setFechaInicio, setFechaFin, setPrograma, setCanal, clearFilters } =
+  const { filters, setFechaInicio, setFechaFin, setPrograma, setCanal, setCategoria, clearFilters } =
     useDashboardFilters();
   const programasQuery = useFilterProgramas();
   const canalesQuery = useFilterCanales();
+  const categoriasQuery = useFilterCategorias();
   const periodosQuery = useFilterPeriodos();
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -38,7 +44,7 @@ export function FilterBar() {
   }, []);
 
   const hasActiveFilters =
-    filters.fecha_inicio || filters.fecha_fin || filters.programa || filters.canal;
+    filters.fecha_inicio || filters.fecha_fin || filters.programa || filters.canal || filters.categoria;
 
   return (
     <div
@@ -95,6 +101,26 @@ export function FilterBar() {
           {canalesQuery.data?.map((canal) => (
             <option key={canal} value={canal}>
               {canal}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="filtro-categoria" className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+          Categoría
+        </label>
+        <select
+          id="filtro-categoria"
+          value={filters.categoria ?? ""}
+          onChange={(event) => setCategoria(toUndefined(event.target.value))}
+          className="min-w-[10rem] rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900
+            dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+        >
+          <option value="">Todas</option>
+          {categoriasQuery.data?.map((categoria) => (
+            <option key={categoria} value={categoria}>
+              {categoria}
             </option>
           ))}
         </select>
