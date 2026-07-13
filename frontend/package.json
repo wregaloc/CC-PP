@@ -11,12 +11,13 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.56.0",
+    "axios": "^1.7.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.0",
-    "@tanstack/react-query": "^5.56.0",
-    "axios": "^1.7.7",
-    "recharts": "^2.12.7"
+    "recharts": "^2.12.7",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
@@ -25,6 +26,7 @@
     "@types/node": "^22.5.4",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.9.0",
