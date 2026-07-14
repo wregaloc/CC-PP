@@ -51,7 +51,7 @@ def test_prepare_data_row_derives_period_and_programa_ref() -> None:
         "Engagement": 6.25,
         "Pico Max": 500,
         "Promedio en Vivo": 300,
-        "Formato": "Vivo",
+        "Formato": "VIVO",
         "Titulo del Video": "Episodio 1",
         "Link del Video": "http://example.com",
     }
@@ -64,6 +64,10 @@ def test_prepare_data_row_derives_period_and_programa_ref() -> None:
     assert row["semana_num"] == week_num_excel_style(date(2026, 7, 5))
     assert row["vistas_diarias"] == 1000
     assert row["es_emision"] == 2  # varias emisiones el mismo día son válidas, no solo 0/1
+    # "VIVO" -> "Vivo": normalizado al casing canónico (ver validate_formato)
+    # para que el filtro de /dashboard/ranking/programas no deje invisibles
+    # meses cargados con otra capitalización en el CSV de origen.
+    assert row["formato"] == "Vivo"
     assert ref == ProgramaRef(
         nombre="Hablando Huevadas",
         canal="Latina",

@@ -5,6 +5,7 @@ import pytest
 from app.etl.column_specs import ColumnSpec, FileTypeSpec
 from app.etl.exceptions import RowValidationError
 from app.etl.validators import (
+    validate_formato,
     validate_non_negative,
     validate_row,
     validate_scores_sum_to_one,
@@ -142,6 +143,21 @@ def test_validate_sentimiento_accepts_known_values_case_insensitive() -> None:
 def test_validate_sentimiento_rejects_unknown_value() -> None:
     with pytest.raises(RowValidationError, match="Sentimiento"):
         validate_sentimiento("mixto")
+
+
+def test_validate_formato_normalizes_casing_to_canonical() -> None:
+    """El CSV de origen no es consistente entre archivos ('VIVO' en unos
+    meses, 'Vivo' en otros) — sin esta normalización, un filtro exacto en
+    el backend deja invisibles los meses cargados con otra capitalización."""
+    assert validate_formato("VIVO") == "Vivo"
+    assert validate_formato("grabado") == "Grabado"
+    assert validate_formato("Finalizado") == "Finalizado"
+    assert validate_formato(None) is None
+
+
+def test_validate_formato_rejects_unknown_value() -> None:
+    with pytest.raises(RowValidationError, match="Formato"):
+        validate_formato("En vivo")
 
 
 def test_validate_scores_sum_to_one_accepts_exact_and_within_tolerance() -> None:

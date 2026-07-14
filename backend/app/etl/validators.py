@@ -15,6 +15,11 @@ from app.etl.exceptions import RowValidationError
 
 VALID_TIPOS = {"podcast", "programa"}
 VALID_SENTIMIENTOS = {"positivo", "negativo", "neutral"}
+# Formato canónico capitalizado (ver Adenda 3 de la auditoría / DATA[Formato]
+# original) — mapeado desde minúsculas para aceptar cualquier capitalización
+# de entrada (el CSV de origen no es consistente entre archivos: "VIVO" vs
+# "Vivo" vs "vivo" para el mismo valor) y normalizar siempre al mismo casing.
+VALID_FORMATOS = {"grabado": "Grabado", "vivo": "Vivo", "finalizado": "Finalizado"}
 
 
 def validate_row(spec: FileTypeSpec, raw_row: dict[str, Any]) -> dict[str, Any]:
@@ -102,6 +107,17 @@ def validate_tipo(value: str | None) -> str | None:
             f"'Tipo' inválido: '{value}' (valores permitidos: {sorted(VALID_TIPOS)})"
         )
     return normalized
+
+
+def validate_formato(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    if normalized not in VALID_FORMATOS:
+        raise RowValidationError(
+            f"'Formato' inválido: '{value}' (valores permitidos: {sorted(VALID_FORMATOS.values())})"
+        )
+    return VALID_FORMATOS[normalized]
 
 
 def validate_sentimiento(value: str) -> str:

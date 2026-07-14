@@ -12,6 +12,7 @@ from app.etl.exceptions import RowValidationError
 from app.etl.models import ProgramaRef
 from app.etl.month_names import month_name_to_number
 from app.etl.validators import (
+    validate_formato,
     validate_non_negative,
     validate_scores_sum_to_one,
     validate_sentimiento,
@@ -84,7 +85,7 @@ def prepare_data_row(clean: dict[str, Any]) -> tuple[dict[str, Any], ProgramaRef
         "engagement": clean.get("Engagement"),
         "pico_max_vivo": clean.get("Pico Max"),
         "promedio_vivo": clean.get("Promedio en Vivo"),
-        "formato": clean.get("Formato"),
+        "formato": validate_formato(clean.get("Formato")),
         "titulo_video": clean.get("Titulo del Video"),
         "link_video": clean.get("Link del Video"),
     }
