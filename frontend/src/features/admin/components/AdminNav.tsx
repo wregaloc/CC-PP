@@ -23,8 +23,8 @@ export function AdminNav() {
           className={({ isActive }) =>
             `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               isActive
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
-                : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                ? "border border-[rgba(180,151,90,0.35)] bg-[rgba(180,151,90,0.12)] text-[#8a6f3c] dark:border-[rgba(180,151,90,0.35)] dark:bg-[rgba(180,151,90,0.15)] dark:text-[#d8bc82]"
+                : "border border-transparent text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
             }`
           }
         >
