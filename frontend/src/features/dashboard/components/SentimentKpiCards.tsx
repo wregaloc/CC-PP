@@ -6,10 +6,10 @@ import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { KpiCard } from "@/features/dashboard/components/KpiCard";
 import type { KpiAccent } from "@/features/dashboard/components/KpiCard";
 import { formatPercent } from "@/features/dashboard/lib/formatters";
+import { computeMomDeltaPuntos, computeMomRange } from "@/features/dashboard/lib/sentimentTrend";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useSentimentKpis } from "@/features/dashboard/hooks/useSentimentKpis";
 import { useSentimientoEvolutivo } from "@/features/dashboard/hooks/useSentimentoEvolutivo";
-import type { SentimientoEvolutivoPoint } from "@/features/dashboard/types";
 
 // Mismos colores que las KpiCard de arriba (text-green-600/red-600/neutral-500
 // en Tailwind) — Recharts dibuja en SVG y necesita el hex directo, no puede
@@ -19,46 +19,6 @@ const SENTIMENT_LINE_COLORS = {
   pct_negativo: "#dc2626",
   pct_neutral: "#9ca3af",
 } as const;
-
-type SentimentKey = "pct_positivo" | "pct_negativo" | "pct_neutral";
-
-/** Variación MoM en puntos porcentuales: último punto de la serie vs. el
- * penúltimo (mes más reciente vs. el anterior) — no confundir con variación
- * porcentual relativa, ya estamos comparando dos porcentajes entre sí. */
-function computeMomDeltaPuntos(
-  data: SentimientoEvolutivoPoint[] | undefined,
-  key: SentimentKey,
-): number | null {
-  if (!data || data.length < 2) return null;
-  const last = data[data.length - 1][key];
-  const previous = data[data.length - 2][key];
-  if (last === null || previous === null) return null;
-  return (last - previous) * 100;
-}
-
-function toISODate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function parseISODate(value: string): Date {
-  const [y, m, d] = value.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
-
-/** Rango [1º del mes anterior al de referencia, fin del mes de referencia] —
- * garantiza 2 puntos (mes anterior + mes de referencia) para el indicador
- * MoM sin importar cuán angosto sea el rango de fechas que eligió el usuario
- * (p. ej. filtrar un solo mes no debe dejar el indicador sin datos). */
-function computeMomRange(referenceIso: string | undefined): { fecha_inicio: string; fecha_fin: string } | null {
-  if (!referenceIso) return null;
-  const reference = parseISODate(referenceIso);
-  const priorMonthStart = new Date(reference.getFullYear(), reference.getMonth() - 1, 1);
-  const referenceMonthEnd = new Date(reference.getFullYear(), reference.getMonth() + 1, 0);
-  return { fecha_inicio: toISODate(priorMonthStart), fecha_fin: toISODate(referenceMonthEnd) };
-}
 
 /** "Favorable" depende de la categoría: para Negativo, bajar es la buena
  * noticia — nunca colorear por el signo aritmético sin pasar por esta regla. */
