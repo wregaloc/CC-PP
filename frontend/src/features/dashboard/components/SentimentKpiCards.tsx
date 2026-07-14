@@ -36,6 +36,30 @@ function computeMomDeltaPuntos(
   return (last - previous) * 100;
 }
 
+function toISODate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function parseISODate(value: string): Date {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Rango [1º del mes anterior al de referencia, fin del mes de referencia] —
+ * garantiza 2 puntos (mes anterior + mes de referencia) para el indicador
+ * MoM sin importar cuán angosto sea el rango de fechas que eligió el usuario
+ * (p. ej. filtrar un solo mes no debe dejar el indicador sin datos). */
+function computeMomRange(referenceIso: string | undefined): { fecha_inicio: string; fecha_fin: string } | null {
+  if (!referenceIso) return null;
+  const reference = parseISODate(referenceIso);
+  const priorMonthStart = new Date(reference.getFullYear(), reference.getMonth() - 1, 1);
+  const referenceMonthEnd = new Date(reference.getFullYear(), reference.getMonth() + 1, 0);
+  return { fecha_inicio: toISODate(priorMonthStart), fecha_fin: toISODate(referenceMonthEnd) };
+}
+
 /** "Favorable" depende de la categoría: para Negativo, bajar es la buena
  * noticia — nunca colorear por el signo aritmético sin pasar por esta regla. */
 function getMomColorClass(rounded: number, accent: KpiAccent): string {
@@ -76,6 +100,18 @@ export function SentimentKpiCards() {
   const query = useSentimentKpis(sentimentFilters);
   const evolutivoQuery = useSentimientoEvolutivo(sentimentFilters);
 
+  // El indicador MoM (▲/▼ p.p.) no debe depender del ancho del rango que
+  // eligió el usuario en el filtro global — si filtra un solo mes, igual
+  // tiene que poder comparar contra el mes anterior. Se pide un rango propio
+  // anclado en fecha_fin (o fecha_inicio si no hay fecha_fin) en vez de
+  // reusar evolutivoQuery.data, que respeta el filtro visible del gráfico.
+  const referenceDate = filters.fecha_fin ?? filters.fecha_inicio;
+  const momRange = computeMomRange(referenceDate);
+  const momFilters = momRange
+    ? { fecha_inicio: momRange.fecha_inicio, fecha_fin: momRange.fecha_fin, programa: filters.programa }
+    : sentimentFilters; // sin fecha elegida: mismo comportamiento de antes (últimos 2 meses disponibles)
+  const momQuery = useSentimientoEvolutivo(momFilters);
+
   return (
     <DashboardCard title="Sentimiento de Audiencia">
       <QueryState
@@ -100,7 +136,7 @@ export function SentimentKpiCards() {
               accent="positivo"
               trailing={
                 <MomIndicator
-                  deltaPuntos={computeMomDeltaPuntos(evolutivoQuery.data, "pct_positivo")}
+                  deltaPuntos={computeMomDeltaPuntos(momQuery.data, "pct_positivo")}
                   accent="positivo"
                 />
               }
@@ -112,7 +148,7 @@ export function SentimentKpiCards() {
               accent="negativo"
               trailing={
                 <MomIndicator
-                  deltaPuntos={computeMomDeltaPuntos(evolutivoQuery.data, "pct_negativo")}
+                  deltaPuntos={computeMomDeltaPuntos(momQuery.data, "pct_negativo")}
                   accent="negativo"
                 />
               }
@@ -124,7 +160,7 @@ export function SentimentKpiCards() {
               accent="neutral"
               trailing={
                 <MomIndicator
-                  deltaPuntos={computeMomDeltaPuntos(evolutivoQuery.data, "pct_neutral")}
+                  deltaPuntos={computeMomDeltaPuntos(momQuery.data, "pct_neutral")}
                   accent="neutral"
                 />
               }
