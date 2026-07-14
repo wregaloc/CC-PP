@@ -303,7 +303,7 @@ function AuspiciosPorMarca({ meses }: { meses: number[] }) {
           <div className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800">
             {gruposPorMes.map(([mesNum, grupo]) => (
               <div key={mesNum} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
-                <h4 className="flex items-baseline gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                <h4 className="flex items-baseline gap-1.5 text-xs font-bold uppercase tracking-wider text-[#b4975a]">
                   {grupo.mesNombre}
                   <span className="font-normal normal-case text-neutral-400 dark:text-neutral-500">
                     · {grupo.items.length} programa{grupo.items.length === 1 ? "" : "s"}
