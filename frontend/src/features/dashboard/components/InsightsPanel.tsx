@@ -334,7 +334,7 @@ function MomTrendClause({
       — y en el último mes ({monthsLabel}) {verbo}{" "}
       <strong className={HIGHLIGHT_CLASS}>
         {sign}
-        {rounded.toFixed(1)} p.p.
+        {rounded.toFixed(1)} p.p
       </strong>
     </>
   );
