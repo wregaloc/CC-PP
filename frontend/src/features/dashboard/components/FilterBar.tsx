@@ -7,6 +7,7 @@ import {
   useFilterPeriodos,
   useFilterProgramas,
 } from "@/features/dashboard/hooks/useFilterOptions";
+import { LastUpdateIndicator } from "@/features/dashboard/components/LastUpdateIndicator";
 import { Button } from "@/components/ui/Button";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
 
@@ -48,13 +49,17 @@ export function FilterBar() {
 
   return (
     <div
-      className={`sticky top-0 z-30 flex flex-wrap items-end gap-3 rounded-lg border p-4
+      className={`sticky top-0 z-30 relative flex flex-wrap items-end gap-3 rounded-lg border p-4
         transition-all duration-300 ${
           isScrolled
             ? "border-neutral-200/60 bg-white/75 shadow-md backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-900/75"
             : "border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
         }`}
     >
+      <div className="absolute right-4 top-2">
+        <LastUpdateIndicator />
+      </div>
+
       <DateRangePicker
         label="Rango de fechas"
         value={{ from: filters.fecha_inicio, to: filters.fecha_fin }}
