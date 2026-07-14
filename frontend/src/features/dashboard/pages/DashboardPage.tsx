@@ -1,6 +1,7 @@
 import { AuspiciosPanel } from "@/features/dashboard/components/AuspiciosPanel";
 import { EvolutivoDetalladoChart } from "@/features/dashboard/components/EvolutivoDetalladoChart";
 import { FilterBar } from "@/features/dashboard/components/FilterBar";
+import { InsightsPanel } from "@/features/dashboard/components/InsightsPanel";
 import { KeywordsCloud } from "@/features/dashboard/components/KeywordsCloud";
 import { KpiRow } from "@/features/dashboard/components/KpiRow";
 import { RankingProgramasPanel } from "@/features/dashboard/components/RankingProgramasPanel";
@@ -37,6 +38,8 @@ export function DashboardPage() {
           <KeywordsCloud />
           <SentimentKpiCards />
         </div>
+
+        <InsightsPanel />
       </div>
     </DashboardFiltersProvider>
   );
