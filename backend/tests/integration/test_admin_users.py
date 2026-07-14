@@ -217,6 +217,63 @@ async def test_toggle_active_deactivates_and_reactivates_user(
     assert reactivated.json()["is_active"] is True
 
 
+async def test_set_password_allows_login_with_the_new_password(
+    client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
+) -> None:
+    token = await _make_admin_token(client, make_user, "admin-setpass@podpulse.pe")
+    create_response = await client.post(
+        USERS_URL,
+        headers=_auth(token),
+        json={
+            "email": "cliente-setpass@podpulse.pe",
+            "full_name": "Cliente Set Pass",
+            "role": "cliente",
+            "password": "Original123",
+        },
+    )
+    user_id = create_response.json()["id"]
+
+    response = await client.post(
+        f"{USERS_URL}/{user_id}/set-password",
+        headers=_auth(token),
+        json={"password": "NuevaClave123"},
+    )
+
+    assert response.status_code == 200
+
+    new_token = await _login(client, "cliente-setpass@podpulse.pe", "NuevaClave123")
+    assert new_token
+
+    login_with_old = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "cliente-setpass@podpulse.pe", "password": "Original123"},
+    )
+    assert login_with_old.status_code == 401
+
+
+async def test_set_password_rejects_weak_password(
+    client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
+) -> None:
+    token = await _make_admin_token(client, make_user, "admin-setpass-weak@podpulse.pe")
+    create_response = await client.post(
+        USERS_URL,
+        headers=_auth(token),
+        json={
+            "email": "cliente-setpass-weak@podpulse.pe",
+            "full_name": "Cliente Weak",
+            "role": "cliente",
+            "password": "Original123",
+        },
+    )
+    user_id = create_response.json()["id"]
+
+    response = await client.post(
+        f"{USERS_URL}/{user_id}/set-password", headers=_auth(token), json={"password": "corta"}
+    )
+
+    assert response.status_code == 422
+
+
 async def test_list_users_filters_by_role(
     client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
 ) -> None:

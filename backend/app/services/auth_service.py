@@ -15,9 +15,11 @@ from app.core.security import (
 )
 from app.exceptions.auth import (
     AccountInactiveError,
+    ClientCannotChangeCredentialsError,
     InvalidCredentialsError,
     TooManyLoginAttemptsError,
 )
+from app.models.enums import UserRole
 from app.models.user import User
 from app.repositories import audit_log_repository, revoked_token_repository, user_repository
 
@@ -162,7 +164,14 @@ async def logout(
 async def change_password(
     session: AsyncSession, user: User, current_password: str, new_password: str
 ) -> None:
-    """TDD §8.2 /auth/change-password — requiere conocer la contraseña actual."""
+    """TDD §8.2 /auth/change-password — requiere conocer la contraseña actual.
+
+    Fase 10 §Módulo 4: el rol Cliente no tiene autoservicio de credenciales —
+    solo el Admin puede fijarle una contraseña nueva (vía admin_user_service.set_password).
+    """
+    if user.role == UserRole.CLIENTE:
+        raise ClientCannotChangeCredentialsError
+
     if not verify_password(current_password, user.password_hash):
         raise InvalidCredentialsError
 

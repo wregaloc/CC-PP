@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     # El archivo se borra tras procesarse; el dato ya vive en Postgres.
     upload_storage_dir: str = "storage/uploads"
 
+    # Logos de cliente (Fase 10 §Módulo 3) — a diferencia de upload_storage_dir,
+    # estos archivos SÍ se conservan (se sirven de vuelta vía GET, no son un
+    # insumo transitorio de un ETL).
+    client_logo_storage_dir: str = "storage/client_logos"
+
     # Se declara como str plano (no list[str]): pydantic-settings intenta decodificar
     # los tipos complejos como JSON antes de validarlos, lo que rompe con un valor
     # separado por comas como "http://a,http://b". Se expone como lista mediante

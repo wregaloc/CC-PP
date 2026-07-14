@@ -39,6 +39,8 @@ async def create(
     full_name: str,
     role: UserRole,
     created_by_id: uuid.UUID,
+    cargo: str | None = None,
+    client_id: uuid.UUID | None = None,
 ) -> User:
     user = User(
         email=email,
@@ -46,6 +48,8 @@ async def create(
         full_name=full_name,
         role=role,
         created_by_id=created_by_id,
+        cargo=cargo,
+        client_id=client_id,
     )
     session.add(user)
     # flush (no commit): resuelve los defaults del servidor (id, created_at...)
@@ -56,11 +60,20 @@ async def create(
 
 
 async def update_profile(
-    session: AsyncSession, user: User, *, email: str, full_name: str, role: UserRole
+    session: AsyncSession,
+    user: User,
+    *,
+    email: str,
+    full_name: str,
+    role: UserRole,
+    cargo: str | None,
+    client_id: uuid.UUID | None,
 ) -> User:
     user.email = email
     user.full_name = full_name
     user.role = role
+    user.cargo = cargo
+    user.client_id = client_id
     return user
 
 
@@ -73,14 +86,17 @@ async def list_paginated(
     session: AsyncSession,
     pagination: PaginationParams,
     *,
-    role: UserRole | None = None,
+    role: list[UserRole] | None = None,
     is_active: bool | None = None,
+    client_id: uuid.UUID | None = None,
 ) -> tuple[list[User], int]:
     filters = []
-    if role is not None:
-        filters.append(User.role == role)
+    if role:
+        filters.append(User.role.in_(role))
     if is_active is not None:
         filters.append(User.is_active == is_active)
+    if client_id is not None:
+        filters.append(User.client_id == client_id)
 
     total = (
         await session.execute(select(func.count()).select_from(User).where(*filters))

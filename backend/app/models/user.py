@@ -10,6 +10,7 @@ from app.db.base import Base
 from app.models.enums import UserRole
 
 if TYPE_CHECKING:
+    from app.models.client import Client
     from app.models.upload_log import UploadLog
 
 
@@ -22,6 +23,15 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Puesto dentro del equipo interno (Fase 10 §Módulo 2) — solo tiene sentido
+    # para role in {ADMIN, INTERNO}, nunca validado como obligatorio a nivel de
+    # columna porque un usuario CLIENTE legítimamente no lo tiene.
+    cargo: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Empresa asignada (Fase 10 §Módulo 3/4) — solo aplica a role == CLIENTE.
+    # Puramente administrativo: no se usa para filtrar datos del dashboard.
+    client_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     role: Mapped[UserRole] = mapped_column(
         Enum(
             UserRole,
@@ -46,3 +56,4 @@ class User(Base):
 
     created_by: Mapped["User | None"] = relationship("User", remote_side=[id])
     uploads: Mapped[list["UploadLog"]] = relationship("UploadLog", back_populates="uploaded_by")
+    client: Mapped["Client | None"] = relationship("Client", back_populates="users")

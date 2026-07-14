@@ -28,6 +28,8 @@ async def create_user(
     full_name: str,
     role: UserRole,
     password: str,
+    cargo: str | None = None,
+    client_id: uuid.UUID | None = None,
 ) -> User:
     if await user_repository.get_by_email(session, email) is not None:
         raise EmailAlreadyExistsError
@@ -39,6 +41,8 @@ async def create_user(
         full_name=full_name,
         role=role,
         created_by_id=actor.id,
+        cargo=cargo,
+        client_id=client_id,
     )
     await audit_log_repository.record(
         session,
@@ -61,10 +65,13 @@ async def list_users(
     session: AsyncSession,
     pagination: PaginationParams,
     *,
-    role: UserRole | None,
+    role: list[UserRole] | None,
     is_active: bool | None,
+    client_id: uuid.UUID | None = None,
 ) -> tuple[list[User], int]:
-    return await user_repository.list_paginated(session, pagination, role=role, is_active=is_active)
+    return await user_repository.list_paginated(
+        session, pagination, role=role, is_active=is_active, client_id=client_id
+    )
 
 
 async def update_user(
@@ -75,6 +82,8 @@ async def update_user(
     email: str,
     full_name: str,
     role: UserRole,
+    cargo: str | None = None,
+    client_id: uuid.UUID | None = None,
 ) -> User:
     user = await get_user(session, user_id)
 
@@ -90,12 +99,20 @@ async def update_user(
             ("email", user.email, email),
             ("full_name", user.full_name, full_name),
             ("role", user.role, role),
+            ("cargo", user.cargo, cargo),
+            ("client_id", user.client_id, client_id),
         )
         if old != new
     ]
 
     updated = await user_repository.update_profile(
-        session, user, email=email, full_name=full_name, role=role
+        session,
+        user,
+        email=email,
+        full_name=full_name,
+        role=role,
+        cargo=cargo,
+        client_id=client_id,
     )
     if fields_changed:
         await audit_log_repository.record(
@@ -121,3 +138,18 @@ async def toggle_active(session: AsyncSession, actor: User, user_id: uuid.UUID) 
     )
     await session.commit()
     return updated
+
+
+async def set_password(
+    session: AsyncSession, actor: User, user_id: uuid.UUID, *, new_password: str
+) -> User:
+    """Fase 10 §Módulo 4: el Admin fija la contraseña directamente, sin
+    conocer la actual (a diferencia de auth_service.change_password)."""
+    user = await get_user(session, user_id)
+
+    await user_repository.update_password(session, user, hash_password(new_password))
+    await audit_log_repository.record(
+        session, action="USER_PASSWORD_RESET", user_id=actor.id, extra={"user_id": str(user.id)}
+    )
+    await session.commit()
+    return user

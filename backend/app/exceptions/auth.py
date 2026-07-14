@@ -27,3 +27,8 @@ class AccountInactiveError(Exception):
 
 class InsufficientRoleError(Exception):
     """El usuario autenticado no tiene el rol requerido para la operación."""
+
+
+class ClientCannotChangeCredentialsError(Exception):
+    """Fase 10 §Módulo 4: el rol Cliente no gestiona sus propias credenciales
+    (ni contraseña ni email) — es responsabilidad exclusiva del Admin."""

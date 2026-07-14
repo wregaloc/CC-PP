@@ -126,7 +126,10 @@ async def test_change_password_requires_authentication(client: httpx.AsyncClient
 async def test_change_password_rejects_wrong_current_password(
     client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
 ) -> None:
-    await make_user(email="changepass@podpulse.pe", password="Valida123")
+    # role=INTERNO: el rol Cliente no tiene autoservicio de contraseña desde
+    # Fase 10 §Módulo 4 (ver test_change_password_rejects_cliente_role) — este
+    # test verifica el rechazo por contraseña incorrecta, no por rol.
+    await make_user(email="changepass@podpulse.pe", password="Valida123", role=UserRole.INTERNO)
     login_response = await _login(client, "changepass@podpulse.pe", "Valida123")
     access_token = login_response.json()["access_token"]
 
@@ -142,7 +145,7 @@ async def test_change_password_rejects_wrong_current_password(
 async def test_change_password_success_allows_login_with_the_new_password(
     client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
 ) -> None:
-    await make_user(email="changeok@podpulse.pe", password="Valida123")
+    await make_user(email="changeok@podpulse.pe", password="Valida123", role=UserRole.INTERNO)
     login_response = await _login(client, "changeok@podpulse.pe", "Valida123")
     access_token = login_response.json()["access_token"]
 
@@ -158,6 +161,24 @@ async def test_change_password_success_allows_login_with_the_new_password(
 
     old_login = await _login(client, "changeok@podpulse.pe", "Valida123")
     assert old_login.status_code == 401
+
+
+async def test_change_password_rejects_cliente_role(
+    client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
+) -> None:
+    """Fase 10 §Módulo 4: el rol Cliente no gestiona sus propias credenciales."""
+    await make_user(email="changecliente@podpulse.pe", password="Valida123", role=UserRole.CLIENTE)
+    login_response = await _login(client, "changecliente@podpulse.pe", "Valida123")
+    access_token = login_response.json()["access_token"]
+
+    response = await client.post(
+        CHANGE_PASSWORD_URL,
+        json={"current_password": "Valida123", "new_password": "Nueva1234"},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "INSUFFICIENT_ROLE"
 
 
 async def test_protected_endpoint_rejects_missing_token(client: httpx.AsyncClient) -> None:

@@ -1,6 +1,7 @@
 """Importa todos los modelos para que Base.metadata los conozca (autogenerate de Alembic)."""
 
 from app.models.audit_log import AuditLog
+from app.models.client import Client
 from app.models.dim_auspicios import Auspicio
 from app.models.dim_programa import Programa
 from app.models.fact_audiencia import FactAudiencia
@@ -12,6 +13,7 @@ from app.models.user import User
 
 __all__ = [
     "AuditLog",
+    "Client",
     "Auspicio",
     "Programa",
     "FactAudiencia",

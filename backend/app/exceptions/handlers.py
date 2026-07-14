@@ -12,10 +12,12 @@ from app.exceptions.admin_users import (
 )
 from app.exceptions.auth import (
     AccountInactiveError,
+    ClientCannotChangeCredentialsError,
     InsufficientRoleError,
     InvalidCredentialsError,
     TooManyLoginAttemptsError,
 )
+from app.exceptions.clients import ClientNotFoundError, InvalidLogoImageError
 from app.exceptions.dashboard import InvalidDateRangeError
 from app.exceptions.uploads import FileTooLargeError, UploadNotFoundError, UploadRejectedError
 
@@ -57,6 +59,16 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: InsufficientRoleError
     ) -> JSONResponse:
         return _error(403, "INSUFFICIENT_ROLE", "Rol sin permiso para esta operación")
+
+    @app.exception_handler(ClientCannotChangeCredentialsError)
+    async def client_cannot_change_credentials_handler(
+        request: Request, exc: ClientCannotChangeCredentialsError
+    ) -> JSONResponse:
+        return _error(
+            403,
+            "INSUFFICIENT_ROLE",
+            "El rol Cliente no gestiona sus propias credenciales — contactá a un Admin",
+        )
 
     @app.exception_handler(TooManyLoginAttemptsError)
     async def too_many_attempts_handler(
@@ -111,6 +123,16 @@ def register_exception_handlers(app: FastAPI) -> None:
         return _error(
             400, "CANNOT_CHANGE_OWN_ROLE", "Un Admin no puede cambiar el rol de su propia cuenta"
         )
+
+    @app.exception_handler(ClientNotFoundError)
+    async def client_not_found_handler(request: Request, exc: ClientNotFoundError) -> JSONResponse:
+        return _error(404, "RESOURCE_NOT_FOUND", "No existe un cliente con ese id")
+
+    @app.exception_handler(InvalidLogoImageError)
+    async def invalid_logo_image_handler(
+        request: Request, exc: InvalidLogoImageError
+    ) -> JSONResponse:
+        return _error(422, "VALIDATION_ERROR", "El archivo no es una imagen PNG/JPEG/WEBP válida")
 
     @app.exception_handler(InvalidDateRangeError)
     async def invalid_date_range_handler(
