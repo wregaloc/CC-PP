@@ -43,6 +43,40 @@ const LINE_COLOR = "#d8bc82"; // oro claro — antes amarillo (#eab308), Doc-Mig
 const LINE_DOT_COLOR = "#b4975a";
 const BAR_LABEL_COLOR = "#f5f1e8";
 
+interface VistasLabelProps {
+  x?: number | string;
+  y?: number | string;
+  width?: number | string;
+  value?: number | string;
+}
+
+/** Label del valor de "Vistas Totales" sobre cada barra, renderizado a mano
+ * en vez de usar `position="insideTop"` de LabelList: cuando solo hay una
+ * barra (rango filtrado a un único mes/semana/día), Recharts le pasa a esa
+ * posición el ancho completo de la barra como prop `width`, lo que activa
+ * su lógica interna de word-wrap/ajuste de texto (pensada para etiquetas
+ * largas) y termina distorsionando un número simple. Un `content` custom
+ * evita esa lógica por completo — ver Text.js::getWordsByLines en
+ * node_modules/recharts. */
+function VistasLabel({ x, y, width, value }: VistasLabelProps) {
+  if (x === undefined || y === undefined || width === undefined || value === undefined) return null;
+  const numX = Number(x);
+  const numY = Number(y);
+  const numWidth = Number(width);
+  return (
+    <text
+      x={numX + numWidth / 2}
+      y={numY + 14}
+      textAnchor="middle"
+      fontSize={10}
+      fontWeight={500}
+      fill={BAR_LABEL_COLOR}
+    >
+      {formatCompactNumber(Number(value))}
+    </text>
+  );
+}
+
 interface BarShapeProps {
   x: number;
   y: number;
@@ -169,14 +203,7 @@ export function EvolutivoDetalladoChart() {
                 activeBar={{ fill: BAR_HOVER_COLOR, fillOpacity: BAR_OPACITY }}
                 cursor="pointer"
               >
-                <LabelList
-                  dataKey="vistas_totales"
-                  position="insideTop"
-                  offset={8}
-                  formatter={(value: number) => formatCompactNumber(value)}
-                  className="text-[10px] font-medium"
-                  fill={BAR_LABEL_COLOR}
-                />
+                <LabelList dataKey="vistas_totales" content={VistasLabel} />
                 {chartData.map((punto) => {
                   const isSelected =
                     filters.fecha_inicio === punto.rango.from && filters.fecha_fin === punto.rango.to;
