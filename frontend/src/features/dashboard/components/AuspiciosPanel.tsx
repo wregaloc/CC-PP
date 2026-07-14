@@ -159,9 +159,9 @@ function AuspiciosPorPrograma({
     >
       {singleMes && (
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col items-center gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-4 py-5
-            dark:border-neutral-800 dark:bg-neutral-950">
-            <span className="text-4xl font-bold text-neutral-900 dark:text-neutral-100">
+          <div className="flex flex-col items-center gap-1 rounded-md border border-[rgba(180,151,90,0.35)] bg-[rgba(180,151,90,0.08)] px-4 py-5
+            dark:border-[rgba(180,151,90,0.25)] dark:bg-[#1a1714]">
+            <span className="text-4xl font-bold text-[#b4975a]">
               {formatCompactNumber(datosEnRango.length)}
             </span>
             <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
@@ -183,7 +183,7 @@ function AuspiciosPorPrograma({
         <div className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800">
           {gruposPorMes.map((grupo) => (
             <div key={grupo.mesNum} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
-              <h4 className="flex items-baseline gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+              <h4 className="flex items-baseline gap-1.5 text-xs font-bold uppercase tracking-wider text-[#b4975a]">
                 {MESES[grupo.mesNum - 1]}
                 <span className="font-normal normal-case text-neutral-400 dark:text-neutral-500">
                   · {grupo.marcas.length} marca{grupo.marcas.length === 1 ? "" : "s"}
