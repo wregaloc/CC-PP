@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 
 import pytest
 
@@ -82,10 +82,14 @@ def test_prepare_data_row_derives_period_and_programa_ref() -> None:
         "Formato": "VIVO",
         "Titulo del Video": "Episodio 1",
         "Link del Video": "http://example.com",
+        "Hora Trasmisión": "19:00:34",
+        "Duración": "2:29:51",
     }
 
     row, ref = prepare_data_row(clean)
 
+    assert row["hora_transmision"] == time(19, 0, 34)
+    assert row["duracion_segundos"] == 2 * 3600 + 29 * 60 + 51
     assert row["fecha"] == date(2026, 7, 5)
     assert row["anio"] == 2026
     assert row["mes_num"] == 7

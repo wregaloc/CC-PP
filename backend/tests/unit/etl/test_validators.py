@@ -1,10 +1,12 @@
-from datetime import date
+from datetime import date, time
 
 import pytest
 
 from app.etl.column_specs import ColumnSpec, FileTypeSpec
 from app.etl.exceptions import RowValidationError
 from app.etl.validators import (
+    parse_duracion_a_segundos,
+    parse_hora_transmision,
     validate_formato,
     validate_non_negative,
     validate_row,
@@ -174,6 +176,39 @@ def test_validate_formato_normalizes_casing_to_canonical() -> None:
 def test_validate_formato_rejects_unknown_value() -> None:
     with pytest.raises(RowValidationError, match="Formato"):
         validate_formato("En vivo")
+
+
+def test_parse_hora_transmision_valid() -> None:
+    assert parse_hora_transmision("19:00:34") == time(19, 0, 34)
+    assert parse_hora_transmision(None) is None
+
+
+def test_parse_hora_transmision_rejects_malformed() -> None:
+    with pytest.raises(RowValidationError, match="Hora Trasmisión"):
+        parse_hora_transmision("no-es-hora")
+
+
+def test_parse_hora_transmision_rejects_out_of_range() -> None:
+    with pytest.raises(RowValidationError, match="fuera de rango"):
+        parse_hora_transmision("25:00:00")
+
+
+def test_parse_duracion_a_segundos_hms() -> None:
+    assert parse_duracion_a_segundos("2:29:51") == 2 * 3600 + 29 * 60 + 51
+
+
+def test_parse_duracion_a_segundos_ms_under_an_hour() -> None:
+    """2 componentes son SIEMPRE minutos:segundos, nunca horas:minutos — el
+    archivo fuente usa M:SS para videos de menos de una hora."""
+    assert parse_duracion_a_segundos("32:37") == 32 * 60 + 37
+    assert parse_duracion_a_segundos(None) is None
+
+
+def test_parse_duracion_a_segundos_rejects_excel_artifact() -> None:
+    """'1 day, 16:43:00' es un artefacto de una celda de Excel mal
+    formateada (visto en datos reales) — se rechaza, no se adivina."""
+    with pytest.raises(RowValidationError, match="Duración"):
+        parse_duracion_a_segundos("1 day, 16:43:00")
 
 
 def test_validate_scores_sum_to_one_accepts_exact_and_within_tolerance() -> None:

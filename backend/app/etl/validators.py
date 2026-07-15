@@ -6,7 +6,7 @@ viola una regla de negocio conocida, se rechaza con un motivo explícito.
 """
 
 import re
-from datetime import date
+from datetime import date, time
 from typing import Any
 
 import pandas as pd
@@ -132,6 +132,55 @@ def validate_formato(value: str | None) -> str | None:
             f"'Formato' inválido: '{value}' (valores permitidos: {sorted(VALID_FORMATOS.values())})"
         )
     return VALID_FORMATOS[normalized]
+
+
+_HORA_PATTERN = re.compile(r"^(\d{1,2}):(\d{2}):(\d{2})$")
+
+
+def parse_hora_transmision(value: str | None) -> time | None:
+    """"Hora Trasmisión" ("19:00:34") -> time del día. Rechaza cualquier
+    cosa que no matchee HH:MM:SS en vez de adivinar (ver misma regla que
+    parse_duracion_a_segundos)."""
+    if value is None:
+        return None
+    match = _HORA_PATTERN.match(value.strip())
+    if not match:
+        raise RowValidationError(f"'Hora Trasmisión' inválida: '{value}'")
+    h, m, s = (int(g) for g in match.groups())
+    if not (0 <= h <= 23 and 0 <= m <= 59 and 0 <= s <= 59):
+        raise RowValidationError(f"'Hora Trasmisión' fuera de rango: '{value}'")
+    return time(h, m, s)
+
+
+# El archivo fuente mezcla "H:MM:SS" (>= 1 hora) y "M:SS" (< 1 hora) para el
+# mismo campo "Duración" — nunca "H:MM" a secas, así que 2 componentes
+# siempre son minutos:segundos, jamás horas:minutos.
+_DURACION_HMS = re.compile(r"^(\d+):(\d{2}):(\d{2})$")
+_DURACION_MS = re.compile(r"^(\d+):(\d{2})$")
+
+
+def parse_duracion_a_segundos(value: str | None) -> int | None:
+    """"Duración" -> segundos totales. Se guarda como entero (no un
+    intervalo/hora) porque el formato de origen es ambiguo entre filas — un
+    valor como "1 day, 16:43:00" (visto en datos reales: artefacto de una
+    celda de Excel con formato de duración mal aplicado, no un video de más
+    de 24 horas) se rechaza en vez de adivinar cuál interpretación es la
+    correcta."""
+    if value is None:
+        return None
+    valor = value.strip()
+    match = _DURACION_HMS.match(valor)
+    if match:
+        h, m, s = (int(g) for g in match.groups())
+    else:
+        match = _DURACION_MS.match(valor)
+        if not match:
+            raise RowValidationError(f"'Duración' inválida: '{value}'")
+        h = 0
+        m, s = (int(g) for g in match.groups())
+    if not (0 <= m <= 59 and 0 <= s <= 59):
+        raise RowValidationError(f"'Duración' fuera de rango: '{value}'")
+    return h * 3600 + m * 60 + s
 
 
 def validate_sentimiento(value: str) -> str:

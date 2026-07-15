@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, time
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
@@ -9,10 +9,12 @@ from sqlalchemy import (
     ForeignKey,
     Identity,
     Index,
+    Integer,
     Numeric,
     SmallInteger,
     String,
     Text,
+    Time,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -62,6 +64,15 @@ class FactAudiencia(Base):
     formato: Mapped[str | None] = mapped_column(String(50), nullable=True)
     titulo_video: Mapped[str | None] = mapped_column(Text, nullable=True)
     link_video: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Hora del día en que se transmitió el video (columna "Hora Trasmisión"
+    # del archivo fuente) — solo hora, no timestamp completo (la fecha ya
+    # está en `fecha`).
+    hora_transmision: Mapped[time | None] = mapped_column(Time, nullable=True)
+    # Duración total en segundos (columna "Duración") — se guarda como
+    # entero en vez de un tipo de intervalo/hora para no depender de un
+    # formato de presentación; ver validators.parse_duracion_a_segundos
+    # para el porqué (el archivo fuente mezcla "H:MM:SS" y "M:SS").
+    duracion_segundos: Mapped[int | None] = mapped_column(Integer, nullable=True)
     upload_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("upload_logs.id", ondelete="SET NULL"), nullable=True
     )
