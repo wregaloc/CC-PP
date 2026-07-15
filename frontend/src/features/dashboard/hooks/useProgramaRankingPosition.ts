@@ -3,11 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { getRankingProgramas } from "@/features/dashboard/api/dashboardApi";
 import type { ProgramType } from "@/features/dashboard/types";
 
+// Deliberadamente sin canal/categoria: la posición que devuelve este hook es
+// siempre global dentro del tipo del programa — heredar esos filtros haría
+// que "puesto N" cambie de significado según el filtro activo (decisión del
+// usuario, 15/07/2026; ver InsightsPanel).
 interface Params {
   fecha_inicio?: string;
   fecha_fin?: string;
-  canal?: string;
-  categoria?: string;
   programa: string | undefined;
 }
 

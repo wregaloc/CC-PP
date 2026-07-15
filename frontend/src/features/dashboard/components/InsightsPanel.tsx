@@ -151,11 +151,14 @@ function InsightsContent({ programa }: { programa: string }) {
   const { filters } = useDashboardFilters();
 
   const kpisQuery = useKpis(filters);
+  // Sin canal/categoria a propósito: el puesto del Insight 1 es siempre el
+  // ranking GLOBAL dentro del tipo del programa (decisión del usuario,
+  // 15/07/2026). Si heredara esos filtros, "puesto 3" con un canal filtrado
+  // significaría "3° dentro del canal" mientras la frase dice "en el ranking
+  // de Podcasts" a secas — número correcto con texto engañoso.
   const rankingQuery = useProgramaRankingPosition({
     fecha_inicio: filters.fecha_inicio,
     fecha_fin: filters.fecha_fin,
-    canal: filters.canal,
-    categoria: filters.categoria,
     programa,
   });
 
