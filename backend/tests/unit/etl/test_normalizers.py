@@ -6,6 +6,7 @@ from app.etl.exceptions import RowValidationError
 from app.etl.models import ProgramaRef
 from app.etl.normalizers import (
     consolidate_data_rows,
+    dedupe_auspicios_rows,
     derive_period_from_month_name,
     prepare_auspicios_row,
     prepare_data_row,
@@ -152,6 +153,29 @@ def test_prepare_data_row_rejects_negative_es_emision() -> None:
 
     with pytest.raises(RowValidationError, match="Es_Emision"):
         prepare_data_row(clean)
+
+
+def test_dedupe_auspicios_rows_drops_exact_key_duplicates() -> None:
+    """Misma clave (mes, programa, auspiciador) repetida en el archivo — sin
+    esto el UPSERT falla con 'ON CONFLICT DO UPDATE cannot affect row a
+    second time' y tumba la carga completa."""
+    a = {"mes_num": 1, "mes_nombre": "Enero", "programa_id": 1, "auspiciador": "BETCRIS"}
+    b = {"mes_num": 1, "mes_nombre": "Enero", "programa_id": 1, "auspiciador": "BETCRIS"}
+
+    result = dedupe_auspicios_rows([a, b])
+
+    assert result == [a]
+
+
+def test_dedupe_auspicios_rows_keeps_distinct_keys() -> None:
+    a = {"mes_num": 1, "mes_nombre": "Enero", "programa_id": 1, "auspiciador": "BETCRIS"}
+    b = {"mes_num": 2, "mes_nombre": "Febrero", "programa_id": 1, "auspiciador": "BETCRIS"}
+    c = {"mes_num": 1, "mes_nombre": "Enero", "programa_id": 2, "auspiciador": "BETCRIS"}
+    d = {"mes_num": 1, "mes_nombre": "Enero", "programa_id": 1, "auspiciador": "PEDIDOSYA"}
+
+    result = dedupe_auspicios_rows([a, b, c, d])
+
+    assert result == [a, b, c, d]
 
 
 def test_consolidate_data_rows_passes_single_rows_untouched() -> None:

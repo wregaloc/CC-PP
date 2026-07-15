@@ -24,6 +24,7 @@ from app.etl.exceptions import FileStructureError, RowValidationError
 from app.etl.models import LoadReport, ProgramaRef, RejectedRow
 from app.etl.normalizers import (
     consolidate_data_rows,
+    dedupe_auspicios_rows,
     prepare_auspicios_row,
     prepare_data_row,
     prepare_keywords_row,
@@ -74,6 +75,12 @@ async def run_auspicios_pipeline(
         prepare_auspicios_row,
         repository.upsert_dim_auspicios,
         original_filename,
+        # La misma marca puede repetirse en el archivo (p. ej. dos filas que
+        # la normalización de nombres deja con la misma clave) — sin esto el
+        # UPSERT falla con "ON CONFLICT DO UPDATE cannot affect row a second
+        # time" y la carga entera se cae (ver consolidate_data_rows, mismo
+        # problema en DATA).
+        consolidate_rows=dedupe_auspicios_rows,
     )
 
 

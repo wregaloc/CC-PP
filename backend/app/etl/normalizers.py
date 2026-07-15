@@ -143,6 +143,25 @@ def _merge_data_group(group: list[dict[str, Any]]) -> dict[str, Any]:
     return base
 
 
+def dedupe_auspicios_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Deduplica filas AUSPICIOS que comparten (mes_num, programa_id,
+    auspiciador) — la clave de dim_auspicios. Pueden repetirse en el archivo
+    fuente (p. ej. la misma marca escrita dos veces con distinto espaciado
+    que la normalización unifica) y el UPSERT falla con "ON CONFLICT DO
+    UPDATE cannot affect row a second time" si viajan en el mismo lote. Un
+    duplicado exacto aquí no aporta información (la fila solo registra
+    presencia de la marca ese mes), así que se queda la primera."""
+    vistos: set[tuple[Any, Any, Any]] = set()
+    unicas: list[dict[str, Any]] = []
+    for row in rows:
+        key = (row["mes_num"], row["programa_id"], row["auspiciador"])
+        if key in vistos:
+            continue
+        vistos.add(key)
+        unicas.append(row)
+    return unicas
+
+
 def prepare_auspicios_row(clean: dict[str, Any]) -> tuple[dict[str, Any], ProgramaRef]:
     mes_num = month_name_to_number(clean["Mes"])
     if mes_num is None:
