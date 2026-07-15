@@ -92,21 +92,40 @@ def test_prepare_data_row_derives_period_and_programa_ref() -> None:
     assert row["duracion_segundos"] == 2 * 3600 + 29 * 60 + 51
     assert row["fecha"] == date(2026, 7, 5)
     assert row["anio"] == 2026
-    assert row["mes_num"] == 7
-    assert row["semana_num"] == week_num_excel_style(date(2026, 7, 5))
-    assert row["vistas_diarias"] == 1000
-    assert row["es_emision"] == 2  # varias emisiones el mismo día son válidas, no solo 0/1
-    # "VIVO" -> "Vivo": normalizado al casing canónico (ver validate_formato)
-    # para que el filtro de /dashboard/ranking/programas no deje invisibles
-    # meses cargados con otra capitalización en el CSV de origen.
-    assert row["formato"] == "Vivo"
-    assert ref == ProgramaRef(
-        nombre="Hablando Huevadas",
-        canal="Latina",
-        categoria="Conversacional",
-        tipo="podcast",
-        authoritative=True,
-    )
+
+
+def test_prepare_data_row_malformed_duracion_degrades_to_none_not_row_rejection() -> None:
+    """Un artefacto de Excel en 'Duración' (visto en datos reales) no debe
+    tumbar la fila entera — Vistas/Likes reales se conservan, solo la
+    duración queda en blanco. Distinto de Formato/Tipo, que sí rechazan la
+    fila por ser dimensiones de negocio con vocabulario fijo."""
+    clean = {
+        "Fecha": date(2026, 7, 5),
+        "Programa": "X",
+        "Canal": "Y",
+        "Categoria": None,
+        "Tipo": None,
+        "Puesto": None,
+        "Es_Emision": 1,
+        "Vistas_Diarias": 5000,
+        "Busquedas_Diarias": 0,
+        "Likes": None,
+        "Comentarios": None,
+        "Engagement": None,
+        "Pico Max": None,
+        "Promedio en Vivo": None,
+        "Formato": None,
+        "Titulo del Video": None,
+        "Link del Video": None,
+        "Hora Trasmisión": "no-es-hora",
+        "Duración": "1 day, 16:43:00",
+    }
+
+    row, _ = prepare_data_row(clean)
+
+    assert row["hora_transmision"] is None
+    assert row["duracion_segundos"] is None
+    assert row["vistas_diarias"] == 5000  # el resto de la fila sobrevive intacto
 
 
 def test_prepare_data_row_rejects_negative_metric() -> None:

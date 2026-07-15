@@ -134,19 +134,27 @@ def validate_formato(value: str | None) -> str | None:
     return VALID_FORMATOS[normalized]
 
 
-_HORA_PATTERN = re.compile(r"^(\d{1,2}):(\d{2}):(\d{2})$")
+_HORA_HMS = re.compile(r"^(\d{1,2}):(\d{2}):(\d{2})$")
+_HORA_HM = re.compile(r"^(\d{1,2}):(\d{2})$")
 
 
 def parse_hora_transmision(value: str | None) -> time | None:
-    """"Hora Trasmisión" ("19:00:34") -> time del día. Rechaza cualquier
-    cosa que no matchee HH:MM:SS en vez de adivinar (ver misma regla que
-    parse_duracion_a_segundos)."""
+    """"Hora Trasmisión" -> time del día. El archivo fuente trae tanto
+    "HH:MM:SS" ("19:00:34") como "HH:MM" sin segundos ("21:00", asumidos
+    en :00) — confirmado escaneando los 3 archivos reales (15/07/2026).
+    Cualquier otra forma se rechaza en vez de adivinar."""
     if value is None:
         return None
-    match = _HORA_PATTERN.match(value.strip())
-    if not match:
-        raise RowValidationError(f"'Hora Trasmisión' inválida: '{value}'")
-    h, m, s = (int(g) for g in match.groups())
+    valor = value.strip()
+    match = _HORA_HMS.match(valor)
+    if match:
+        h, m, s = (int(g) for g in match.groups())
+    else:
+        match = _HORA_HM.match(valor)
+        if not match:
+            raise RowValidationError(f"'Hora Trasmisión' inválida: '{value}'")
+        h, m = (int(g) for g in match.groups())
+        s = 0
     if not (0 <= h <= 23 and 0 <= m <= 59 and 0 <= s <= 59):
         raise RowValidationError(f"'Hora Trasmisión' fuera de rango: '{value}'")
     return time(h, m, s)
@@ -154,9 +162,11 @@ def parse_hora_transmision(value: str | None) -> time | None:
 
 # El archivo fuente mezcla "H:MM:SS" (>= 1 hora) y "M:SS" (< 1 hora) para el
 # mismo campo "Duración" — nunca "H:MM" a secas, así que 2 componentes
-# siempre son minutos:segundos, jamás horas:minutos.
+# siempre son minutos:segundos, jamás horas:minutos. Un solo "-" es el
+# marcador de "sin dato" del archivo fuente (no es un error).
 _DURACION_HMS = re.compile(r"^(\d+):(\d{2}):(\d{2})$")
 _DURACION_MS = re.compile(r"^(\d+):(\d{2})$")
+_DURACION_SIN_DATO = "-"
 
 
 def parse_duracion_a_segundos(value: str | None) -> int | None:
@@ -169,6 +179,8 @@ def parse_duracion_a_segundos(value: str | None) -> int | None:
     if value is None:
         return None
     valor = value.strip()
+    if valor == _DURACION_SIN_DATO:
+        return None
     match = _DURACION_HMS.match(valor)
     if match:
         h, m, s = (int(g) for g in match.groups())

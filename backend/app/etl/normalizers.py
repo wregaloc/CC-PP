@@ -4,9 +4,10 @@ No toca la base de datos — la resolución de programa_id (que sí la toca) viv
 en repository.py. Cada `prepare_*_row` devuelve (fila_lista_para_upsert, ProgramaRef).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
+from typing import Any, TypeVar
 
 from app.etl.exceptions import RowValidationError
 from app.etl.models import ProgramaRef
@@ -51,6 +52,23 @@ def derive_period_from_month_name(anio: int, mes_nombre: str) -> DerivedPeriod:
     return DerivedPeriod(anio=anio, mes_num=mes_num)
 
 
+_T = TypeVar("_T")
+
+
+def _parse_opcional(parser: Callable[[str | None], _T | None], value: str | None) -> _T | None:
+    """Degrada a None en vez de tumbar toda la fila — usado para campos
+    enriquecedores (Hora Trasmisión, Duración) cuyo formato de origen trae
+    artefactos conocidos (p. ej. "1 day, 16:43:00" de una celda de Excel mal
+    formateada, visto en ~1,050 filas reales del 15/07/2026). A diferencia
+    de Formato/Tipo (dimensiones de negocio con vocabulario fijo, donde un
+    valor inválido sí amerita rechazar la fila), perder Vistas/Likes reales
+    por un dato de duración corrupto es una pérdida desproporcionada."""
+    try:
+        return parser(value)
+    except RowValidationError:
+        return None
+
+
 def prepare_data_row(clean: dict[str, Any]) -> tuple[dict[str, Any], ProgramaRef]:
     fecha: date = clean["Fecha"]
     tipo = validate_tipo(clean.get("Tipo"))
@@ -90,8 +108,8 @@ def prepare_data_row(clean: dict[str, Any]) -> tuple[dict[str, Any], ProgramaRef
         "formato": validate_formato(clean.get("Formato")),
         "titulo_video": clean.get("Titulo del Video"),
         "link_video": clean.get("Link del Video"),
-        "hora_transmision": parse_hora_transmision(clean.get("Hora Trasmisión")),
-        "duracion_segundos": parse_duracion_a_segundos(clean.get("Duración")),
+        "hora_transmision": _parse_opcional(parse_hora_transmision, clean.get("Hora Trasmisión")),
+        "duracion_segundos": _parse_opcional(parse_duracion_a_segundos, clean.get("Duración")),
     }
     return row, programa_ref
 

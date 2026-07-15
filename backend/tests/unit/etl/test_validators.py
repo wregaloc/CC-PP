@@ -183,6 +183,12 @@ def test_parse_hora_transmision_valid() -> None:
     assert parse_hora_transmision(None) is None
 
 
+def test_parse_hora_transmision_accepts_hh_mm_sin_segundos() -> None:
+    """El archivo fuente trae ambas formas para el mismo campo — confirmado
+    escaneando datos reales (15/07/2026)."""
+    assert parse_hora_transmision("21:00") == time(21, 0, 0)
+
+
 def test_parse_hora_transmision_rejects_malformed() -> None:
     with pytest.raises(RowValidationError, match="Hora Trasmisión"):
         parse_hora_transmision("no-es-hora")
@@ -202,6 +208,12 @@ def test_parse_duracion_a_segundos_ms_under_an_hour() -> None:
     archivo fuente usa M:SS para videos de menos de una hora."""
     assert parse_duracion_a_segundos("32:37") == 32 * 60 + 37
     assert parse_duracion_a_segundos(None) is None
+
+
+def test_parse_duracion_a_segundos_guion_es_sin_dato() -> None:
+    """Un solo '-' es el marcador de "sin dato" del archivo fuente, no un
+    error — confirmado escaneando datos reales (15/07/2026)."""
+    assert parse_duracion_a_segundos("-") is None
 
 
 def test_parse_duracion_a_segundos_rejects_excel_artifact() -> None:
