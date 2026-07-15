@@ -92,6 +92,57 @@ def prepare_data_row(clean: dict[str, Any]) -> tuple[dict[str, Any], ProgramaRef
     return row, programa_ref
 
 
+def consolidate_data_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Consolida filas DATA que comparten (fecha, programa_id) en una sola —
+    el grano de fact_audiencia es una fila por programa-día, pero la fuente
+    real trae a veces varias (filas de relleno en cero, o varios videos del
+    mismo día). Sin esto, el UPSERT falla con "ON CONFLICT DO UPDATE cannot
+    affect row a second time" y la carga entera se cae.
+
+    Reglas (aprobadas por el usuario — perfilado del Excel ENE_JUL_2026):
+    - Métricas aditivas (vistas, búsquedas, likes, comentarios, emisiones):
+      SUMA — mismo resultado que las medidas SUM del Power BI original.
+    - Engagement: se RECALCULA con su definición confirmada
+      (Likes + Comentarios) / Vistas sobre los totales consolidados — nunca
+      se suman porcentajes. Si no hay likes/comentarios en el grupo, se
+      conserva el de la fila dominante.
+    - pico_max_vivo: MAX del grupo (es un pico).
+    - Campos descriptivos (formato, título, link, puesto, promedio_vivo):
+      de la fila dominante (la de más vistas) — en el caso típico (1 fila
+      real + relleno en cero) es exactamente la fila real.
+    """
+    grouped: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
+    for row in rows:
+        grouped.setdefault((row["fecha"], row["programa_id"]), []).append(row)
+
+    return [
+        group[0] if len(group) == 1 else _merge_data_group(group) for group in grouped.values()
+    ]
+
+
+def _sum_optional(values: list[Any]) -> Any:
+    present = [v for v in values if v is not None]
+    return sum(present) if present else None
+
+
+def _merge_data_group(group: list[dict[str, Any]]) -> dict[str, Any]:
+    base = max(group, key=lambda r: r["vistas_diarias"]).copy()
+    base["vistas_diarias"] = sum(r["vistas_diarias"] for r in group)
+    base["busquedas_diarias"] = sum(r["busquedas_diarias"] for r in group)
+    base["es_emision"] = sum(r["es_emision"] for r in group)
+    base["likes"] = _sum_optional([r["likes"] for r in group])
+    base["comentarios"] = _sum_optional([r["comentarios"] for r in group])
+    picos = [r["pico_max_vivo"] for r in group if r["pico_max_vivo"] is not None]
+    base["pico_max_vivo"] = max(picos) if picos else None
+
+    has_interacciones = base["likes"] is not None or base["comentarios"] is not None
+    if has_interacciones and base["vistas_diarias"] > 0:
+        interacciones = (base["likes"] or 0) + (base["comentarios"] or 0)
+        base["engagement"] = interacciones / base["vistas_diarias"]
+
+    return base
+
+
 def prepare_auspicios_row(clean: dict[str, Any]) -> tuple[dict[str, Any], ProgramaRef]:
     mes_num = month_name_to_number(clean["Mes"])
     if mes_num is None:

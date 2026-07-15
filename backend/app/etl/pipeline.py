@@ -20,9 +20,10 @@ from app.etl.column_specs import (
     SPLIT_SENSE_SPEC,
     FileTypeSpec,
 )
-from app.etl.exceptions import FileStructureError, RowValidationError, UnknownProgramaError
+from app.etl.exceptions import FileStructureError, RowValidationError
 from app.etl.models import LoadReport, ProgramaRef, RejectedRow
 from app.etl.normalizers import (
+    consolidate_data_rows,
     prepare_auspicios_row,
     prepare_data_row,
     prepare_keywords_row,
@@ -35,6 +36,7 @@ from app.models.upload_log import UploadLog
 
 RowPreparer = Callable[[dict[str, Any]], tuple[dict[str, Any], ProgramaRef]]
 BulkUpserter = Callable[[AsyncSession, list[dict[str, Any]]], Awaitable[None]]
+RowConsolidator = Callable[[list[dict[str, Any]]], list[dict[str, Any]]]
 
 
 async def run_data_pipeline(
@@ -51,6 +53,10 @@ async def run_data_pipeline(
         prepare_data_row,
         repository.upsert_fact_audiencia,
         original_filename,
+        # Solo DATA consolida: es el único tipo cuya fuente trae varias filas
+        # por clave de upsert (ver consolidate_data_rows) — los otros 3 tipos
+        # ya vienen al grano de su tabla.
+        consolidate_rows=consolidate_data_rows,
     )
 
 
@@ -113,6 +119,7 @@ async def _run_pipeline(
     prepare_row: RowPreparer,
     bulk_upsert: BulkUpserter,
     original_filename: str | None = None,
+    consolidate_rows: RowConsolidator | None = None,
 ) -> LoadReport:
     # `file_path` puede ser un nombre temporal generado por el servidor (UUID)
     # distinto del archivo que el Admin subió — `original_filename` es lo que
@@ -154,6 +161,12 @@ async def _run_pipeline(
 
     final_rows = await _resolve_programas(session, prepared, rejected)
 
+    rows_consolidated = 0
+    if consolidate_rows is not None:
+        antes = len(final_rows)
+        final_rows = consolidate_rows(final_rows)
+        rows_consolidated = antes - len(final_rows)
+
     await bulk_upsert(session, final_rows)
 
     status = UploadStatus.SUCCESS
@@ -174,6 +187,10 @@ async def _run_pipeline(
             "file_type": spec.file_type.value,
             "rows_loaded": len(final_rows),
             "rows_skipped": len(rejected),
+            # Filas absorbidas al consolidar duplicados de (fecha, programa)
+            # — queda en la auditoría para poder explicar por qué
+            # rows_loaded < rows_total - rows_skipped en una carga DATA.
+            "rows_consolidated": rows_consolidated,
             "upload_id": str(upload_log.id),
         },
     )
@@ -197,34 +214,33 @@ async def _resolve_programas(
     prepared: list[tuple[int, dict[str, Any], ProgramaRef]],
     rejected: list[RejectedRow],
 ) -> list[dict[str, Any]]:
-    """Resuelve programa_id en batch, con una sola consulta/creación por
-    nombre de programa único en el archivo (no una por fila) para no hacer
-    N round-trips a la base de datos cuando el mismo programa se repite en
-    cientos de filas (caso típico de audiencia diaria).
+    """Resuelve programa_id para todas las filas con consultas en bloque
+    (ver repository.bulk_resolve_programas) — nunca un round-trip por
+    programa: con ~1,300 programas únicos y un pooler remoto, la versión
+    fila-a-fila mantenía la transacción abierta varios minutos y la conexión
+    se cortaba a mitad de carga. El primer ref de cada nombre gana (mismo
+    criterio que el cache de la versión anterior).
     """
-    programa_cache: dict[str, int | None] = {}
-    programa_errors: dict[str, str] = {}
+    unique_refs: dict[str, ProgramaRef] = {}
+    for _, _, ref in prepared:
+        unique_refs.setdefault(ref.nombre, ref)
+
+    resolved = await repository.bulk_resolve_programas(session, list(unique_refs.values()))
+
     final_rows: list[dict[str, Any]] = []
-
     for index, row, ref in prepared:
-        if ref.nombre not in programa_cache:
-            try:
-                programa_cache[ref.nombre] = await repository.get_or_create_programa(
-                    session,
-                    nombre=ref.nombre,
-                    canal=ref.canal,
-                    categoria=ref.categoria,
-                    tipo=ref.tipo,
-                    authoritative=ref.authoritative,
-                )
-            except UnknownProgramaError as exc:
-                programa_cache[ref.nombre] = None
-                programa_errors[ref.nombre] = str(exc)
-
-        programa_id = programa_cache[ref.nombre]
+        programa_id = resolved.get(ref.nombre)
         if programa_id is None:
             rejected.append(
-                RejectedRow(row_index=index, reason=programa_errors[ref.nombre], raw_data=row)
+                RejectedRow(
+                    row_index=index,
+                    reason=(
+                        f"El programa '{ref.nombre}' no existe todavía y este archivo no "
+                        "trae el canal necesario para crearlo (requiere una carga de DATA "
+                        "o AUSPICIOS primero)."
+                    ),
+                    raw_data=row,
+                )
             )
             continue
 

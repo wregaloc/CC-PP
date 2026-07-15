@@ -43,7 +43,7 @@ async def _upload(
     "/data",
     response_model=UploadResultResponse,
     status_code=201,
-    summary="Subir archivo DATA (.csv)",
+    summary="Subir archivo DATA (.csv o .xlsx)",
     description="Procesa audiencia diaria. Rol requerido: admin.",
     responses=_UPLOAD_RESPONSES,
 )

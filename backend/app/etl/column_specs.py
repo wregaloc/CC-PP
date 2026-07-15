@@ -28,6 +28,9 @@ class FileTypeSpec:
     sheet_name: str | int = 0
 
 
+# DATA acepta .csv (histórico) y también .xlsx — ver readers.read_rows: la
+# fuente pasó a entregar Excel (primera hoja; sheet_name=0 por defecto en vez
+# del nombre "DATA" para no romper si renombran la hoja).
 DATA_SPEC = FileTypeSpec(
     file_type=UploadFileType.DATA,
     is_csv=True,

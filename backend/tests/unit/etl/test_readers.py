@@ -82,3 +82,32 @@ def test_read_rows_excel_happy_path(tmp_path: Path) -> None:
     rows = read_rows(_EXCEL_SPEC, excel_path)
 
     assert rows == [{"Programa": "Hablando Huevadas", "Auspiciadores": "Adidas"}]
+
+
+def test_read_rows_csv_spec_accepts_real_xlsx(tmp_path: Path) -> None:
+    """DATA (spec CSV) también acepta un .xlsx real — la fuente pasó de
+    exportar CSV a entregar Excel directamente (primera hoja)."""
+    excel_path = tmp_path / "data.xlsx"
+    df = pd.DataFrame(
+        {"Fecha": ["05/07/2026"], "Programa": ["Hablando Huevadas"], "Vistas_Diarias": ["1000"]}
+    )
+    with pd.ExcelWriter(excel_path) as writer:
+        df.to_excel(writer, sheet_name="DATA", index=False)
+
+    rows = read_rows(_CSV_SPEC, excel_path)
+
+    assert len(rows) == 1
+    assert rows[0]["Programa"] == "Hablando Huevadas"
+
+
+def test_read_rows_csv_spec_rejects_fake_xlsx(tmp_path: Path) -> None:
+    """Un CSV renombrado a .xlsx no pasa: la rama Excel valida los magic
+    bytes reales del archivo, no la extensión."""
+    fake_path = tmp_path / "data.xlsx"
+    fake_path.write_text(
+        "Fecha;Programa;Vistas_Diarias\n05/07/2026;Hablando Huevadas;1000\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(FileStructureError, match="formato real"):
+        read_rows(_CSV_SPEC, fake_path)

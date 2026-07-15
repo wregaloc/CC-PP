@@ -21,10 +21,3 @@ class RowValidationError(ETLError):
     etc.). Solo esa fila se omite — el resto del archivo se sigue procesando
     (ver TDD §6.3, columna "Por fila").
     """
-
-
-class UnknownProgramaError(ETLError):
-    """Una fila referencia un programa que no existe todavía y la fuente actual
-    no trae suficiente información (canal) para crearlo. La fila se rechaza —
-    nunca se inventa un canal placeholder para no corromper la dimensión.
-    """

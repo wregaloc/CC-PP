@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.etl.exceptions import UnknownProgramaError
+from app.etl.models import ProgramaRef
 from app.models.audit_log import AuditLog
 from app.models.dim_auspicios import Auspicio
 from app.models.dim_programa import Programa
@@ -24,65 +24,81 @@ from app.models.fact_sentimiento import FactSentimiento
 from app.models.upload_log import UploadLog
 
 
-async def get_or_create_programa(
-    session: AsyncSession,
-    *,
-    nombre: str,
-    canal: str | None,
-    categoria: str | None,
-    tipo: str | None,
-    authoritative: bool,
-) -> int:
-    """Resuelve el id de un programa por nombre (clave natural).
+# Tope de nombres por sentencia (IN / INSERT masivo) — muy por debajo del
+# límite de 32,767 parámetros de asyncpg incluso con 4 columnas por fila.
+_RESOLVE_CHUNK = 1000
 
-    - Si ya existe y `authoritative` (fuente DATA): actualiza canal/categoria/tipo
-      sin condiciones — "DATA manda" sobre la dimensión programa (decisión
-      confirmada explícitamente por el usuario durante el diseño del esquema).
-    - Si ya existe y no es autoritativa (p. ej. AUSPICIOS): nunca sobreescribe
-      canal/categoria/tipo existentes, aunque difieran de los del archivo actual.
-    - Si no existe y hay `canal`: se crea (DATA o AUSPICIOS pueden crear
-      programas nuevos, porque ambos traen esa información).
-    - Si no existe y no hay `canal` (KEYWORDS, SPLIT SENSE): se rechaza — nunca
-      se inventa un canal placeholder que corrompería la dimensión.
+
+async def bulk_resolve_programas(
+    session: AsyncSession, refs: list[ProgramaRef]
+) -> dict[str, int]:
+    """Resuelve TODOS los programas de una carga en un puñado de consultas en
+    bloque (SELECT + INSERT masivo + re-SELECT), en vez de un round-trip por
+    programa único: con ~1,300 programas únicos y un pooler remoto (Supabase),
+    la versión fila-a-fila mantenía la transacción abierta varios minutos y la
+    conexión terminaba cortada a mitad de carga (visto en dev, 15/07/2026).
+
+    Misma semántica que la versión fila-a-fila que reemplaza:
+    - Existente + authoritative (DATA): pisa canal/categoria/tipo con los
+      valores no-None del archivo — "DATA manda" sobre la dimensión programa.
+    - Existente + no authoritative (AUSPICIOS): no toca nada.
+    - Nuevo + canal presente: se crea (ON CONFLICT DO NOTHING para que dos
+      cargas concurrentes no rompan con IntegrityError — TOCTOU).
+    - Nuevo + sin canal (KEYWORDS, SPLIT SENSE): queda fuera del dict
+      devuelto — el caller rechaza sus filas, nunca se inventa un canal
+      placeholder que corrompería la dimensión.
     """
-    result = await session.execute(select(Programa).where(Programa.nombre == nombre))
-    programa = result.scalar_one_or_none()
+    unique: dict[str, ProgramaRef] = {}
+    for ref in refs:
+        unique.setdefault(ref.nombre, ref)
+    nombres = list(unique)
+    resolved: dict[str, int] = {}
 
-    if programa is not None:
-        if authoritative:
-            if canal is not None:
-                programa.canal = canal
-            if categoria is not None:
-                programa.categoria = categoria
-            if tipo is not None:
-                programa.tipo = tipo
-        return programa.id
+    # 1) Existentes — entidades completas porque los refs autoritativos
+    #    actualizan atributos (el flush agrupa los UPDATEs en executemany).
+    for i in range(0, len(nombres), _RESOLVE_CHUNK):
+        chunk = nombres[i : i + _RESOLVE_CHUNK]
+        result = await session.execute(select(Programa).where(Programa.nombre.in_(chunk)))
+        for programa in result.scalars():
+            ref = unique[programa.nombre]
+            if ref.authoritative:
+                if ref.canal is not None:
+                    programa.canal = ref.canal
+                if ref.categoria is not None:
+                    programa.categoria = ref.categoria
+                if ref.tipo is not None:
+                    programa.tipo = ref.tipo
+            resolved[programa.nombre] = programa.id
 
-    if canal is None:
-        raise UnknownProgramaError(
-            f"El programa '{nombre}' no existe todavía y este archivo no trae "
-            "el canal necesario para crearlo (requiere una carga de DATA o "
-            "AUSPICIOS primero)."
+    # 2) Nuevos con canal → INSERT masivo.
+    nuevos = [unique[n] for n in nombres if n not in resolved and unique[n].canal is not None]
+    for i in range(0, len(nuevos), _RESOLVE_CHUNK):
+        chunk = nuevos[i : i + _RESOLVE_CHUNK]
+        stmt = (
+            pg_insert(Programa)
+            .values(
+                [
+                    {"nombre": r.nombre, "canal": r.canal, "categoria": r.categoria, "tipo": r.tipo}
+                    for r in chunk
+                ]
+            )
+            .on_conflict_do_nothing(index_elements=["nombre"])
+            .returning(Programa.id, Programa.nombre)
         )
+        for programa_id, nombre in (await session.execute(stmt)).all():
+            resolved[nombre] = programa_id
 
-    # INSERT ... ON CONFLICT DO NOTHING en vez de un INSERT plano: si dos cargas
-    # concurrentes ven ambas "no existe" en el SELECT de arriba (TOCTOU) y
-    # ambas intentan crear el mismo programa nuevo, un INSERT plano rompería
-    # la segunda con un IntegrityError sin manejar (falla toda la carga con un
-    # 500 confuso). Con ON CONFLICT, la segunda simplemente no inserta nada y
-    # el SELECT de abajo recupera la fila que sí se creó.
-    stmt = (
-        pg_insert(Programa)
-        .values(nombre=nombre, canal=canal, categoria=categoria, tipo=tipo)
-        .on_conflict_do_nothing(index_elements=["nombre"])
-        .returning(Programa.id)
-    )
-    programa_id = (await session.execute(stmt)).scalar_one_or_none()
-    if programa_id is not None:
-        return programa_id
+    # 3) Los que el DO NOTHING saltó (otra transacción los creó entre el
+    #    SELECT y el INSERT) — un re-SELECT los recupera.
+    faltantes = [r.nombre for r in nuevos if r.nombre not in resolved]
+    if faltantes:
+        result = await session.execute(
+            select(Programa.id, Programa.nombre).where(Programa.nombre.in_(faltantes))
+        )
+        for programa_id, nombre in result.all():
+            resolved[nombre] = programa_id
 
-    result = await session.execute(select(Programa.id).where(Programa.nombre == nombre))
-    return result.scalar_one()
+    return resolved
 
 
 async def upsert_fact_audiencia(session: AsyncSession, rows: list[dict[str, Any]]) -> None:

@@ -67,6 +67,22 @@ def test_validate_row_engagement_percent_format_becomes_fraction() -> None:
     assert clean["Engagement"] == pytest.approx(0.0156)
 
 
+def test_validate_row_iso_datetime_from_excel_is_not_dayfirst_swapped() -> None:
+    """Las celdas datetime de Excel llegan como "YYYY-MM-DD HH:MM:SS" — con
+    dayfirst=True a secas, pandas invierte "2026-01-08" a 2026-08-01 en
+    silencio (8 de enero → 1 de agosto). ISO se parsea como ISO."""
+    raw = {
+        "Fecha": "2026-01-08 00:00:00",
+        "Programa": "X",
+        "Vistas_Diarias": "10",
+        "Es_Emision": "1",
+    }
+
+    clean = validate_row(_SPEC, raw)
+
+    assert clean["Fecha"] == date(2026, 1, 8)
+
+
 def test_validate_row_missing_required_raises() -> None:
     raw = {"Fecha": "05/07/2026", "Vistas_Diarias": "10", "Es_Emision": "1"}
 

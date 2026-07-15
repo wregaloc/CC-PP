@@ -13,7 +13,7 @@ import type { UploadFileType, UploadLogSummary, UploadResultResponse } from "@/f
 import { normalizeError } from "@/lib/apiError";
 
 const FILE_TYPE_OPTIONS: { value: UploadFileType; label: string; accept: string }[] = [
-  { value: "DATA", label: "Data (audiencia diaria)", accept: ".csv" },
+  { value: "DATA", label: "Data (audiencia diaria)", accept: ".csv,.xlsx" },
   { value: "KEYWORDS", label: "Keywords", accept: ".xlsx" },
   { value: "SPLIT_SENSE", label: "Split Sense (sentimiento)", accept: ".xlsx" },
   { value: "AUSPICIOS", label: "Auspicios", accept: ".xlsx" },

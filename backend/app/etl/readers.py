@@ -26,10 +26,18 @@ _XLSX_MAGIC_BYTES = b"PK\x03\x04"
 def read_rows(spec: FileTypeSpec, file_path: Path) -> list[dict[str, Any]]:
     """Lee el archivo según el spec del tipo y devuelve sus filas como lista
     de dicts (valores todavía sin tipar — eso lo hace validators.validate_row).
+
+    Un spec CSV (DATA) también acepta un `.xlsx` real (decisión del usuario:
+    la fuente pasó de exportar CSV a entregar Excel directamente) — se decide
+    por la extensión, y la rama Excel valida los magic bytes igual que los
+    tipos Excel-only, así que un archivo renombrado no se cuela. Lo inverso
+    no aplica: los specs Excel-only (KEYWORDS/SPLIT_SENSE/AUSPICIOS) siguen
+    rechazando cualquier cosa que no sea un `.xlsx` real.
     """
     _validate_file_size(file_path)
 
-    df = _read_csv(spec, file_path) if spec.is_csv else _read_excel(spec, file_path)
+    use_csv = spec.is_csv and file_path.suffix.lower() != ".xlsx"
+    df = _read_csv(spec, file_path) if use_csv else _read_excel(spec, file_path)
     df.columns = [str(c).strip() for c in df.columns]
     _validate_required_columns(spec, df)
 

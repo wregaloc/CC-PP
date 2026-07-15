@@ -5,6 +5,7 @@ forma silenciosa — cada fila que no puede coercionarse a un tipo válido, o qu
 viola una regla de negocio conocida, se rechaza con un motivo explícito.
 """
 
+import re
 from datetime import date
 from typing import Any
 
@@ -88,8 +89,21 @@ def _coerce_bool(value: str) -> bool:
     raise ValueError(f"valor booleano no reconocido: {value}")
 
 
+# "YYYY-MM-DD" al inicio del string — formato en que pandas serializa las
+# celdas datetime de Excel al leer con dtype=str ("2026-01-08 00:00:00").
+_ISO_DATE_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}")
+
+
 def _coerce_date(value: str) -> date:
-    parsed = pd.to_datetime(value, dayfirst=True, errors="raise")
+    # dayfirst=True existe para el formato del CSV histórico ("08/01/2026" =
+    # 8 de enero). Pero aplicado a un string ISO lo INVIERTE en silencio:
+    # pd.to_datetime("2026-01-08", dayfirst=True) devuelve 2026-08-01 (bug
+    # verificado con pandas 2.x) — corrompería todas las fechas con día <= 12
+    # de un Excel real. ISO es inequívoco: se parsea como ISO, sin dayfirst.
+    if _ISO_DATE_PREFIX.match(value):
+        parsed = pd.to_datetime(value, dayfirst=False, errors="raise")
+    else:
+        parsed = pd.to_datetime(value, dayfirst=True, errors="raise")
     return parsed.date()
 
 

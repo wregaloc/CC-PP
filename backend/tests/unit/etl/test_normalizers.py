@@ -5,6 +5,7 @@ import pytest
 from app.etl.exceptions import RowValidationError
 from app.etl.models import ProgramaRef
 from app.etl.normalizers import (
+    consolidate_data_rows,
     derive_period_from_month_name,
     prepare_auspicios_row,
     prepare_data_row,
@@ -12,6 +13,32 @@ from app.etl.normalizers import (
     prepare_split_sense_row,
     week_num_excel_style,
 )
+
+
+def _data_row(**overrides: object) -> dict[str, object]:
+    """Fila DATA ya preparada (post prepare_data_row + programa_id resuelto)
+    con valores base neutros — cada test pisa solo lo que le importa."""
+    row: dict[str, object] = {
+        "fecha": date(2026, 6, 1),
+        "anio": 2026,
+        "mes_num": 6,
+        "semana_num": 23,
+        "puesto": None,
+        "es_emision": 0,
+        "vistas_diarias": 0,
+        "busquedas_diarias": 0,
+        "likes": None,
+        "comentarios": None,
+        "engagement": None,
+        "pico_max_vivo": None,
+        "promedio_vivo": None,
+        "formato": None,
+        "titulo_video": None,
+        "link_video": None,
+        "programa_id": 1,
+    }
+    row.update(overrides)
+    return row
 
 
 def test_week_num_excel_style_week_one_contains_jan_first() -> None:
@@ -125,6 +152,72 @@ def test_prepare_data_row_rejects_negative_es_emision() -> None:
 
     with pytest.raises(RowValidationError, match="Es_Emision"):
         prepare_data_row(clean)
+
+
+def test_consolidate_data_rows_passes_single_rows_untouched() -> None:
+    row = _data_row(vistas_diarias=100, engagement=0.05)
+
+    result = consolidate_data_rows([row])
+
+    assert result == [row]
+
+
+def test_consolidate_data_rows_padding_rows_keep_real_row_values() -> None:
+    """Caso mayoritario del Excel real (92%): 1 fila con datos + filas de
+    relleno todo en cero — el resultado debe ser la fila real intacta."""
+    real = _data_row(
+        es_emision=1,
+        vistas_diarias=5796,
+        likes=361,
+        comentarios=64,
+        engagement=0.0733,
+        formato="Vivo",
+        titulo_video="Episodio 1",
+    )
+    padding = [_data_row(), _data_row()]
+
+    result = consolidate_data_rows([real, *padding])
+
+    assert len(result) == 1
+    merged = result[0]
+    assert merged["vistas_diarias"] == 5796
+    assert merged["likes"] == 361
+    assert merged["formato"] == "Vivo"
+    assert merged["titulo_video"] == "Episodio 1"
+    # (361 + 64) / 5796 — recalculado con la definición confirmada, coincide
+    # con el engagement original de la fila real
+    assert merged["engagement"] == pytest.approx((361 + 64) / 5796)
+
+
+def test_consolidate_data_rows_genuine_conflict_sums_and_recomputes_engagement() -> None:
+    """Dos videos reales el mismo día: métricas aditivas se suman y el
+    Engagement se recalcula como (ΣLikes + ΣComentarios) / ΣVistas — nunca
+    promediando porcentajes."""
+    video_a = _data_row(vistas_diarias=8000, likes=300, comentarios=100, engagement=0.05, pico_max_vivo=500)
+    video_b = _data_row(vistas_diarias=2000, likes=100, comentarios=0, engagement=0.05, pico_max_vivo=900)
+
+    result = consolidate_data_rows([video_a, video_b])
+
+    assert len(result) == 1
+    merged = result[0]
+    assert merged["vistas_diarias"] == 10000
+    assert merged["likes"] == 400
+    assert merged["comentarios"] == 100
+    assert merged["engagement"] == pytest.approx((400 + 100) / 10000)
+    assert merged["pico_max_vivo"] == 900  # MAX, no suma
+
+
+def test_consolidate_data_rows_groups_by_fecha_and_programa() -> None:
+    """Claves distintas (otro día u otro programa) nunca se mezclan."""
+    rows = [
+        _data_row(programa_id=1, vistas_diarias=10),
+        _data_row(programa_id=2, vistas_diarias=20),
+        _data_row(programa_id=1, fecha=date(2026, 6, 2), vistas_diarias=30),
+    ]
+
+    result = consolidate_data_rows(rows)
+
+    assert len(result) == 3
 
 
 def test_prepare_auspicios_row() -> None:
