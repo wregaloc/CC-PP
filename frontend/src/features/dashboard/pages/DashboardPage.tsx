@@ -1,6 +1,7 @@
 import { AuspiciosPanel } from "@/features/dashboard/components/AuspiciosPanel";
 import { EvolutivoDetalladoChart } from "@/features/dashboard/components/EvolutivoDetalladoChart";
 import { FilterBar } from "@/features/dashboard/components/FilterBar";
+import { HorarioAudienciaPanel } from "@/features/dashboard/components/HorarioAudienciaPanel";
 import { InsightsPanel } from "@/features/dashboard/components/InsightsPanel";
 import { KeywordsCloud } from "@/features/dashboard/components/KeywordsCloud";
 import { KpiRow } from "@/features/dashboard/components/KpiRow";
@@ -28,6 +29,7 @@ export function DashboardPage() {
         <KpiRow />
 
         <EvolutivoDetalladoChart />
+        <HorarioAudienciaPanel />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <RankingProgramasPanel className="md:col-span-2" />

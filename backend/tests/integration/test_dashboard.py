@@ -389,6 +389,36 @@ async def test_evolutivo_groups_by_mes_with_emisiones(
     assert body[0]["metrica_secundaria"] == 3  # SUM(es_emision): 1+0+0+2
 
 
+async def test_horario_audiencia_returns_one_row_per_dia_en_rango(
+    client: httpx.AsyncClient, seeded: dict
+) -> None:
+    """Panel 'Horario de mayor audiencia': una fila por día de TEST_A, con
+    hora_transmision (None si esa carga no la traía, como en el fixture
+    `seeded`) y vistas_diarias — sin agregar, el frontend agrupa por hora."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/horario-audiencia",
+        headers=_auth(token),
+        params={"programa": "TEST_A", "fecha_inicio": "2030-01-01", "fecha_fin": "2030-01-02"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body == [
+        {"fecha": "2030-01-01", "hora_transmision": None, "vistas_diarias": 150},
+        {"fecha": "2030-01-02", "hora_transmision": None, "vistas_diarias": 150},
+    ]
+
+
+async def test_horario_audiencia_requires_programa(client: httpx.AsyncClient, seeded: dict) -> None:
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(f"{DASHBOARD_URL}/horario-audiencia", headers=_auth(token))
+
+    assert response.status_code == 422  # sin `programa`, no hay vista agregada de "Todos"
+
+
 async def test_ranking_programas_dense_rank_ties(client: httpx.AsyncClient, seeded: dict) -> None:
     token = await _login(client, "viewer@podpulse.pe", "Valida123")
 

@@ -1,5 +1,5 @@
 import enum
-from datetime import date
+from datetime import date, time
 
 from pydantic import BaseModel, Field
 
@@ -106,3 +106,14 @@ class SentimientoEvolutivoPoint(BaseModel):
 class PeriodoDisponibleResponse(BaseModel):
     fecha_min: date | None
     fecha_max: date | None
+
+
+class HorarioAudienciaPoint(BaseModel):
+    """Una fila de fact_audiencia (día) para el heatmap "Horario de mayor
+    audiencia" — `hora_transmision` es la hora de inicio del video con más
+    vistas ese día (ver fact_audiencia.hora_transmision); si ese día no
+    tiene hora registrada, el punto no puede ubicarse en el heatmap."""
+
+    fecha: date
+    hora_transmision: time | None
+    vistas_diarias: int

@@ -453,3 +453,26 @@ async def get_filter_periodos(session: AsyncSession) -> dict[str, Any]:
     result = await session.execute(stmt)
     fecha_min, fecha_max = result.one()
     return {"fecha_min": fecha_min, "fecha_max": fecha_max}
+
+
+async def get_horario_audiencia(
+    session: AsyncSession, filters: DateRangeParams, programa: str
+) -> list[dict[str, Any]]:
+    """Una fila por día (fecha, hora_transmision del video con más vistas ese
+    día, vistas_diarias totales) para el heatmap "Horario de mayor
+    audiencia" — el frontend agrupa por día de semana × hora; acá solo se
+    filtra por programa y rango de fechas, sin agregar (el grano ya es
+    diario, 1 fila = 1 día en el rango filtrado)."""
+    stmt = (
+        select(
+            FactAudiencia.fecha,
+            FactAudiencia.hora_transmision,
+            FactAudiencia.vistas_diarias,
+        )
+        .join(Programa, FactAudiencia.programa_id == Programa.id)
+        .where(Programa.nombre == programa)
+        .order_by(FactAudiencia.fecha)
+    )
+    stmt = _apply_date_range(stmt, FactAudiencia.fecha, filters)
+    result = await session.execute(stmt)
+    return [dict(row._mapping) for row in result.all()]

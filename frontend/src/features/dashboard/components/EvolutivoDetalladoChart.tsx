@@ -113,8 +113,10 @@ function BarWithTopBorder({ x, y, width, height, fill, fillOpacity, stroke, stro
  * antiguo "Evolutivo Vistas" (línea simple con granularidad fija).
  */
 export function EvolutivoDetalladoChart() {
-  const { filters, setFechaInicio, setFechaFin } = useDashboardFilters();
-  const [granularidad, setGranularidad] = useState<Granularidad>("mes");
+  // `granularidad` vive en el contexto (no local) porque el panel "Horario
+  // de Mayor Audiencia" también la necesita — ver DashboardFiltersContext.
+  const { filters, setFechaInicio, setFechaFin, granularidad, setGranularidad } =
+    useDashboardFilters();
   const [metricaSecundaria, setMetricaSecundaria] = useState<MetricaSecundaria>("emisiones");
 
   const query = useEvolutivo({ ...filters, granularidad, metrica_secundaria: metricaSecundaria });

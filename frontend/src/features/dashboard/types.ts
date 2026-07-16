@@ -84,3 +84,9 @@ export interface PeriodoDisponibleResponse {
   fecha_min: string | null;
   fecha_max: string | null;
 }
+
+export interface HorarioAudienciaPoint {
+  fecha: string;
+  hora_transmision: string | null;
+  vistas_diarias: number;
+}

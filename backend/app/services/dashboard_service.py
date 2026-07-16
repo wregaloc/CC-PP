@@ -13,6 +13,7 @@ from app.schemas.dashboard import (
     AuspicioOut,
     EvolutivoPoint,
     Granularidad,
+    HorarioAudienciaPoint,
     KeywordOut,
     KpisResponse,
     MetricaSecundaria,
@@ -126,3 +127,10 @@ async def get_filter_categorias(session: AsyncSession) -> list[str]:
 async def get_filter_periodos(session: AsyncSession) -> PeriodoDisponibleResponse:
     data = await dashboard_repository.get_filter_periodos(session)
     return PeriodoDisponibleResponse(**data)
+
+
+async def get_horario_audiencia(
+    session: AsyncSession, filters: DateRangeParams, programa: str
+) -> list[HorarioAudienciaPoint]:
+    rows = await dashboard_repository.get_horario_audiencia(session, filters, programa)
+    return [HorarioAudienciaPoint(**row) for row in rows]

@@ -15,6 +15,7 @@ from app.schemas.dashboard import (
     AuspicioOut,
     EvolutivoPoint,
     Granularidad,
+    HorarioAudienciaPoint,
     KeywordOut,
     KpisResponse,
     MetricaSecundaria,
@@ -209,3 +210,22 @@ async def get_sentimiento_evolutivo(
     session: AsyncSession = Depends(get_db),
 ) -> list[SentimientoEvolutivoPoint]:
     return await dashboard_service.get_sentimiento_evolutivo(session, programa, filters)
+
+
+@router.get(
+    "/horario-audiencia",
+    response_model=list[HorarioAudienciaPoint],
+    summary="Vistas por día y hora de un programa (panel Horario de mayor audiencia)",
+    description="Una fila por día en el rango filtrado, con la hora del video de más vistas ese "
+    "día (fact_audiencia.hora_transmision) — el frontend agrupa por día de semana × hora. "
+    "`programa` es obligatorio: este panel no tiene una vista agregada de 'Todos'. "
+    "Rol requerido: cualquier usuario autenticado.",
+    responses=_AUTH_RESPONSES,
+)
+async def get_horario_audiencia(
+    programa: str = Query(description="Nombre exacto del programa"),
+    filters: DateRangeParams = Depends(date_range_params),
+    user: User = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db),
+) -> list[HorarioAudienciaPoint]:
+    return await dashboard_service.get_horario_audiencia(session, filters, programa)

@@ -9,8 +9,10 @@ function toISO(date: Date): string {
 }
 
 /** Convierte el weekday de JS (domingo=0..sábado=6) al estilo Python usado
- * por el backend (lunes=0..domingo=6, ver week_num_excel_style). */
-function mondayFirstWeekday(date: Date): number {
+ * por el backend (lunes=0..domingo=6, ver week_num_excel_style). Exportada
+ * porque el panel Horario de Mayor Audiencia también la necesita (agrupar
+ * cada día del heatmap en su fila Lun..Dom). */
+export function mondayFirstWeekday(date: Date): number {
   return (date.getDay() + 6) % 7;
 }
 

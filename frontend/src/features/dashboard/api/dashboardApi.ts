@@ -8,6 +8,7 @@ import type {
   EvolutivoPoint,
   Formato,
   Granularidad,
+  HorarioAudienciaPoint,
   KeywordOut,
   KpisResponse,
   MetricaSecundaria,
@@ -85,6 +86,15 @@ export async function getRankingProgramas(params: {
   categoria?: string;
 }): Promise<ProgramaRankingItem[]> {
   const response = await httpClient.get<ProgramaRankingItem[]>("/dashboard/ranking/programas", {
+    params,
+  });
+  return response.data;
+}
+
+export async function getHorarioAudiencia(
+  params: Pick<DashboardFilters, "fecha_inicio" | "fecha_fin"> & { programa: string },
+): Promise<HorarioAudienciaPoint[]> {
+  const response = await httpClient.get<HorarioAudienciaPoint[]>("/dashboard/horario-audiencia", {
     params,
   });
   return response.data;
