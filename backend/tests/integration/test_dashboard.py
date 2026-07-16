@@ -162,6 +162,26 @@ async def test_kpis_filters_by_categoria(client: httpx.AsyncClient, seeded: dict
     assert response.json()["vistas_totales"] == 800
 
 
+async def test_kpis_filters_by_tipo(client: httpx.AsyncClient, seeded: dict) -> None:
+    """TEST_A y TEST_B son podcast (300+500=800 vistas), TEST_C es programa
+    (300 vistas) — mismo criterio de filtro que evolutivo/ranking, ver
+    dashboard_repository.get_kpis."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+    rango = {"fecha_inicio": "2030-01-01", "fecha_fin": "2030-01-02"}
+
+    response_podcast = await client.get(
+        f"{DASHBOARD_URL}/kpis", headers=_auth(token), params={**rango, "tipo": "podcast"}
+    )
+    response_programa = await client.get(
+        f"{DASHBOARD_URL}/kpis", headers=_auth(token), params={**rango, "tipo": "programa"}
+    )
+
+    assert response_podcast.status_code == 200
+    assert response_podcast.json()["vistas_totales"] == 800
+    assert response_programa.status_code == 200
+    assert response_programa.json()["vistas_totales"] == 300
+
+
 async def test_kpis_includes_pico_max_y_promedio_vivo(
     client: httpx.AsyncClient, seeded: dict
 ) -> None:
@@ -387,6 +407,41 @@ async def test_evolutivo_groups_by_mes_with_emisiones(
     assert body[0]["periodo"] == "2030-01"
     assert body[0]["vistas_totales"] == 1100
     assert body[0]["metrica_secundaria"] == 3  # SUM(es_emision): 1+0+0+2
+
+
+async def test_evolutivo_filters_by_tipo(client: httpx.AsyncClient, seeded: dict) -> None:
+    """TEST_A y TEST_B son podcast (300+500=800 vistas), TEST_C es programa
+    (300 vistas) — mismo criterio de filtro que /ranking/programas, ver
+    dashboard_repository.get_evolutivo."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response_podcast = await client.get(
+        f"{DASHBOARD_URL}/evolutivo",
+        headers=_auth(token),
+        params={
+            "granularidad": "mes",
+            "metrica_secundaria": "emisiones",
+            "fecha_inicio": "2030-01-01",
+            "fecha_fin": "2030-01-31",
+            "tipo": "podcast",
+        },
+    )
+    response_programa = await client.get(
+        f"{DASHBOARD_URL}/evolutivo",
+        headers=_auth(token),
+        params={
+            "granularidad": "mes",
+            "metrica_secundaria": "emisiones",
+            "fecha_inicio": "2030-01-01",
+            "fecha_fin": "2030-01-31",
+            "tipo": "programa",
+        },
+    )
+
+    assert response_podcast.status_code == 200
+    assert response_podcast.json()[0]["vistas_totales"] == 800
+    assert response_programa.status_code == 200
+    assert response_programa.json()[0]["vistas_totales"] == 300
 
 
 async def test_horario_audiencia_returns_one_row_per_dia_en_rango(

@@ -32,6 +32,8 @@ const FORMATO_TABS: { value: Formato | ""; label: string }[] = [
 // excluyente por tipo, alternativo al coloreado simultáneo ya aprobado
 // (Propuesta 1). El endpoint ya soportaba `tipo` desde antes de esa
 // propuesta, así que no requiere cambios de contrato.
+// Vive en DashboardFiltersContext (no como estado local de este panel) para
+// que Evolutivo Detallado también filtre por tipo al mismo tiempo.
 const TIPO_TABS: { value: ProgramType | ""; label: string }[] = [
   { value: "", label: "Todos" },
   { value: "podcast", label: "Podcast" },
@@ -47,9 +49,8 @@ const TIPO_TABS: { value: ProgramType | ""; label: string }[] = [
  * 100 por vistas, así que un programa fuera de ese top 100 era imposible de
  * encontrar filtrando solo lo ya traído. */
 export function RankingProgramasPanel({ className }: { className?: string }) {
-  const { filters, setPrograma } = useDashboardFilters();
+  const { filters, setPrograma, setTipo } = useDashboardFilters();
   const [formato, setFormato] = useState<Formato | "">("");
-  const [tipo, setTipo] = useState<ProgramType | "">("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [view, setView] = useState<ViewMode>("grafico");
@@ -79,7 +80,7 @@ export function RankingProgramasPanel({ className }: { className?: string }) {
     canal: filters.canal,
     categoria: filters.categoria,
     formato: formato || undefined,
-    tipo: tipo || undefined,
+    tipo: filters.tipo,
     limit: 100,
     q,
     programa_asegurado: filters.programa,
@@ -145,9 +146,9 @@ export function RankingProgramasPanel({ className }: { className?: string }) {
                 key={tab.value}
                 type="button"
                 role="tab"
-                aria-selected={tipo === tab.value}
-                onClick={() => setTipo(tab.value)}
-                className={tabButtonClass(tipo === tab.value, "flex items-center gap-1.5")}
+                aria-selected={(filters.tipo ?? "") === tab.value}
+                onClick={() => setTipo(tab.value || undefined)}
+                className={tabButtonClass((filters.tipo ?? "") === tab.value, "flex items-center gap-1.5")}
               >
                 {tab.value && (
                   <span

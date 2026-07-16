@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
-import type { DashboardFilters, Granularidad } from "@/features/dashboard/types";
+import type { DashboardFilters, Granularidad, ProgramType } from "@/features/dashboard/types";
 
 interface DashboardFiltersContextValue {
   filters: DashboardFilters;
@@ -9,6 +9,10 @@ interface DashboardFiltersContextValue {
   setPrograma: (value: string | undefined) => void;
   setCanal: (value: string | undefined) => void;
   setCategoria: (value: string | undefined) => void;
+  // Compartido con Ranking de Programas y Evolutivo Detallado — el toggle
+  // Todos/Podcast/Programa del Ranking vive acá (no local a ese panel) para
+  // que Evolutivo Detallado también filtre por tipo al mismo tiempo.
+  setTipo: (value: ProgramType | undefined) => void;
   clearFilters: () => void;
   // Compartida entre Evolutivo Detallado y Horario de Mayor Audiencia — este
   // último necesita saber qué granularidad está activa en el primero (ver
@@ -32,27 +36,30 @@ export function DashboardFiltersProvider({ children }: { children: ReactNode }) 
   const [programa, setPrograma] = useState<string | undefined>(undefined);
   const [canal, setCanal] = useState<string | undefined>(undefined);
   const [categoria, setCategoria] = useState<string | undefined>(undefined);
+  const [tipo, setTipo] = useState<ProgramType | undefined>(undefined);
   const [granularidad, setGranularidad] = useState<Granularidad>("mes");
 
   const value = useMemo<DashboardFiltersContextValue>(
     () => ({
-      filters: { fecha_inicio: fechaInicio, fecha_fin: fechaFin, programa, canal, categoria },
+      filters: { fecha_inicio: fechaInicio, fecha_fin: fechaFin, programa, canal, categoria, tipo },
       setFechaInicio,
       setFechaFin,
       setPrograma,
       setCanal,
       setCategoria,
+      setTipo,
       clearFilters: () => {
         setFechaInicio(undefined);
         setFechaFin(undefined);
         setPrograma(undefined);
         setCanal(undefined);
         setCategoria(undefined);
+        setTipo(undefined);
       },
       granularidad,
       setGranularidad,
     }),
-    [fechaInicio, fechaFin, programa, canal, categoria, granularidad],
+    [fechaInicio, fechaFin, programa, canal, categoria, tipo, granularidad],
   );
 
   return (

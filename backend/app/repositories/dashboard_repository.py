@@ -57,11 +57,12 @@ async def get_kpis(
     programa: str | None,
     canal: str | None,
     categoria: str | None = None,
+    tipo: ProgramType | None = None,
 ) -> dict[str, Any]:
     """TDD §8.3 /dashboard/kpis. Medidas DAX: Vistas Totales=SUM(Vistas_Diarias),
     Engagement Rate=AVERAGE(Engagement), Emisiones=SUM(Es_Emision), Pico Max en
     Vivo=MAX(Pico Max), Promedio en Vivo=AVG(Promedio en Vivo), todas respetando
-    Programa + Canal + Categoría + fechas."""
+    Programa + Canal + Categoría + Tipo + fechas."""
     stmt = select(
         func.coalesce(func.sum(FactAudiencia.vistas_diarias), 0).label("vistas_totales"),
         func.avg(FactAudiencia.engagement).label("engagement_rate"),
@@ -71,7 +72,7 @@ async def get_kpis(
         func.max(FactAudiencia.pico_max_vivo).label("pico_max_vivo"),
         func.avg(FactAudiencia.promedio_vivo).label("promedio_vivo"),
     )
-    if programa is not None or canal is not None or categoria is not None:
+    if programa is not None or canal is not None or categoria is not None or tipo is not None:
         stmt = stmt.join(Programa, FactAudiencia.programa_id == Programa.id)
         if programa is not None:
             stmt = stmt.where(Programa.nombre == programa)
@@ -79,6 +80,8 @@ async def get_kpis(
             stmt = stmt.where(Programa.canal == canal)
         if categoria is not None:
             stmt = stmt.where(Programa.categoria == categoria)
+        if tipo is not None:
+            stmt = stmt.where(Programa.tipo == tipo)
     stmt = _apply_date_range(stmt, FactAudiencia.fecha, filters)
 
     row = (await session.execute(stmt)).one()
@@ -206,6 +209,7 @@ async def get_evolutivo(
     programa: str | None,
     canal: str | None,
     categoria: str | None = None,
+    tipo: ProgramType | None = None,
 ) -> list[dict[str, Any]]:
     """TDD §8.4 /dashboard/evolutivo. Reemplaza la medida "KPI Vistas Promedio
     Dinámico" (que usaba CONTAINSSTRING sobre el parámetro GRANULARIDAD — TDD
@@ -232,7 +236,7 @@ async def get_evolutivo(
         *group_cols, vistas_col.label("vistas_totales"), secondary_col.label("metrica_secundaria")
     )
 
-    if programa is not None or canal is not None or categoria is not None:
+    if programa is not None or canal is not None or categoria is not None or tipo is not None:
         stmt = stmt.join(Programa, FactAudiencia.programa_id == Programa.id)
         if programa is not None:
             stmt = stmt.where(Programa.nombre == programa)
@@ -240,6 +244,8 @@ async def get_evolutivo(
             stmt = stmt.where(Programa.canal == canal)
         if categoria is not None:
             stmt = stmt.where(Programa.categoria == categoria)
+        if tipo is not None:
+            stmt = stmt.where(Programa.tipo == tipo)
     stmt = _apply_date_range(stmt, FactAudiencia.fecha, filters)
     stmt = stmt.group_by(*group_cols).order_by(*group_cols)
 

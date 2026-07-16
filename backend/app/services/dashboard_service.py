@@ -32,8 +32,9 @@ async def get_kpis(
     programa: str | None,
     canal: str | None,
     categoria: str | None = None,
+    tipo: ProgramType | None = None,
 ) -> KpisResponse:
-    data = await dashboard_repository.get_kpis(session, filters, programa, canal, categoria)
+    data = await dashboard_repository.get_kpis(session, filters, programa, canal, categoria, tipo)
     return KpisResponse(**data)
 
 
@@ -71,9 +72,10 @@ async def get_evolutivo(
     programa: str | None,
     canal: str | None,
     categoria: str | None = None,
+    tipo: ProgramType | None = None,
 ) -> list[EvolutivoPoint]:
     points = await dashboard_repository.get_evolutivo(
-        session, filters, granularidad, metrica_secundaria, programa, canal, categoria
+        session, filters, granularidad, metrica_secundaria, programa, canal, categoria, tipo
     )
     return [EvolutivoPoint(**point) for point in points]
 

@@ -43,11 +43,12 @@ async def get_kpis(
     programa: str | None = Query(default=None, description="Nombre exacto del programa"),
     canal: str | None = Query(default=None, description="Nombre exacto del canal"),
     categoria: str | None = Query(default=None, description="Nombre exacto de la categoría"),
+    tipo: ProgramType | None = Query(default=None, description="podcast | programa"),
     filters: DateRangeParams = Depends(date_range_params),
     user: User = Depends(require_authenticated),
     session: AsyncSession = Depends(get_db),
 ) -> KpisResponse:
-    return await dashboard_service.get_kpis(session, filters, programa, canal, categoria)
+    return await dashboard_service.get_kpis(session, filters, programa, canal, categoria, tipo)
 
 
 @router.get(
@@ -135,12 +136,13 @@ async def get_evolutivo(
     programa: str | None = Query(default=None, description="Nombre exacto del programa"),
     canal: str | None = Query(default=None, description="Nombre exacto del canal"),
     categoria: str | None = Query(default=None, description="Nombre exacto de la categoría"),
+    tipo: ProgramType | None = Query(default=None, description="podcast | programa"),
     filters: DateRangeParams = Depends(date_range_params),
     user: User = Depends(require_authenticated),
     session: AsyncSession = Depends(get_db),
 ) -> list[EvolutivoPoint]:
     return await dashboard_service.get_evolutivo(
-        session, filters, granularidad, metrica_secundaria, programa, canal, categoria
+        session, filters, granularidad, metrica_secundaria, programa, canal, categoria, tipo
     )
 
 
