@@ -76,11 +76,137 @@ export function construirGrillaHeatmap(
  * los paneles (rgba(180,151,90,...)), pero como degradado continuo en vez
  * de un acento fijo, para representar intensidad en el heatmap. */
 export function colorIntensidad(ratio: number): string {
-  const r0 = 0x2a, g0 = 0x25, b0 = 0x1b; // carbón oscuro (sin datos / mínimo)
-  const r1 = 0xe8, g1 = 0xd9, b1 = 0xb0; // oro claro (máximo)
+  return colorIntensidadDesde(0x2a, 0x25, 0x1b, 0xe8, 0xd9, 0xb0, ratio);
+}
+
+function colorIntensidadDesde(
+  r0: number, g0: number, b0: number,
+  r1: number, g1: number, b1: number,
+  ratio: number,
+): string {
   const clamped = Math.max(0, Math.min(1, ratio));
   const r = Math.round(r0 + (r1 - r0) * clamped);
   const g = Math.round(g0 + (g1 - g0) * clamped);
   const b = Math.round(b0 + (b1 - b0) * clamped);
   return `rgb(${r}, ${g}, ${b})`;
+}
+
+/** Paleta categórica para diferenciar programas dentro de un mismo heatmap
+ * (modo "canal") — rampa dorada/bronce monocromática (marfil → oro → cobre
+ * → bronce → chocolate) elegida para que las celdas se sientan parte del
+ * mismo look and feel del dashboard, en vez de una paleta multi-hue. Como
+ * una rampa de un solo hue separa peor bajo daltonismo que una paleta con
+ * hues distintos, la diferenciación real de "qué programa es cuál" se
+ * apoya en la leyenda (nombre + swatch, siempre visible) y en el número de
+ * vistas escrito en cada celda — no solo en el color. Dos tonos (#4, #8)
+ * son oscuros y quedan con bajo contraste contra el carbón del panel;
+ * `textoParaPrograma` compensa usando texto claro sobre esas celdas para
+ * que al menos la cifra siga siendo legible. */
+const PALETA_PROGRAMAS: readonly [number, number, number][] = [
+  [0xf5, 0xf1, 0xe8], // marfil
+  [0x8a, 0x6f, 0x3c], // oro profundo/bronce
+  [0xd8, 0xbc, 0x82], // oro claro
+  [0x5c, 0x4a, 0x2e], // bronce muy oscuro
+  [0xa6, 0x7c, 0x52], // cobre/terracota
+  [0xa8, 0x94, 0x78], // gris-bronce apagado
+  [0xe8, 0xc9, 0x5e], // ámbar dorado
+  [0x6b, 0x4a, 0x3a], // marrón chocolate oscuro
+];
+
+/** Por color de la paleta, qué tinta de texto (clara u oscura) da mejor
+ * contraste para la cifra escrita encima — la mayoría de la rampa es clara
+ * y usa la tinta oscura del resto del dashboard, pero los tonos más
+ * oscuros de la rampa (bronce muy oscuro, chocolate, y oro profundo en
+ * menor medida) necesitan texto claro para seguir siendo legibles. */
+const TEXTO_CLARO_POR_COLOR: readonly boolean[] = [false, true, false, true, false, false, false, true];
+const TEXTO_OSCURO = "#241f16";
+const TEXTO_CLARO = "#f5ede0";
+
+export function textoParaPrograma(colorIndex: number): string {
+  return TEXTO_CLARO_POR_COLOR[colorIndex % TEXTO_CLARO_POR_COLOR.length] ? TEXTO_CLARO : TEXTO_OSCURO;
+}
+
+/** Interpola entre el carbón oscuro y el color base asignado a un programa
+ * — mismo criterio que `colorIntensidad`, pero con un hue por programa en
+ * vez de un único degradado, para el heatmap combinado del modo "canal". */
+export function colorIntensidadPrograma(colorIndex: number, ratio: number): string {
+  const [r1, g1, b1] = PALETA_PROGRAMAS[colorIndex % PALETA_PROGRAMAS.length];
+  return colorIntensidadDesde(0x2a, 0x25, 0x1b, r1, g1, b1, ratio);
+}
+
+export interface CeldaCanalHeatmap {
+  dia: string;
+  hora: number;
+  programa: string | null;
+  vistas: number | null;
+  colorIndex: number | null;
+}
+
+export interface ProgramaLeyenda {
+  programa: string;
+  colorIndex: number;
+  totalVistas: number;
+}
+
+export interface GrillaCanalHeatmap {
+  grilla: CeldaCanalHeatmap[][];
+  leyenda: ProgramaLeyenda[];
+  tieneCeldasConDatos: boolean;
+}
+
+/** Modo "canal": arma UN solo heatmap con las filas de todos los programas
+ * del canal mezcladas (ver `programa` en cada HorarioAudienciaPoint) —
+ * cada celda se colorea con el hue plano del programa dominante en ese
+ * (día, hora) según `PALETA_PROGRAMAS` (color plano, no degradado: la
+ * magnitud se lee del número de vistas escrito en la celda, no de la
+ * intensidad del color). La leyenda se ordena por vistas totales del
+ * período, y ese orden decide qué color de la paleta le toca a cada
+ * programa (el más visto se lleva el primero). Si dos programas cayeran en
+ * la misma celda (mismo día y misma hora dominante), gana el de más vistas
+ * ese día — un empate real es un caso borde aceptado, no se apilan ambos
+ * en una sola celda. */
+export function construirGrillaHeatmapCanal(
+  puntos: HorarioAudienciaPoint[],
+  modo: "semana" | "dia",
+): GrillaCanalHeatmap {
+  const dias = modo === "dia" ? [puntos[0]?.fecha ?? ""] : DIAS_SEMANA;
+  const grilla: CeldaCanalHeatmap[][] = dias.map((dia) =>
+    Array.from({ length: 24 }, (_, hora) => ({ dia, hora, programa: null, vistas: null, colorIndex: null })),
+  );
+
+  // El orden de la leyenda (y por lo tanto qué color de la paleta le toca a
+  // cada programa) se decide antes de llenar la grilla, para poder guardar
+  // el colorIndex directamente en cada celda en un solo recorrido.
+  const totalPorPrograma = new Map<string, number>();
+  for (const punto of puntos) {
+    totalPorPrograma.set(punto.programa, (totalPorPrograma.get(punto.programa) ?? 0) + punto.vistas_diarias);
+  }
+  const leyenda: ProgramaLeyenda[] = [...totalPorPrograma.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([programa, totalVistas], colorIndex) => ({ programa, totalVistas, colorIndex }));
+  const colorIndexPorPrograma = new Map(leyenda.map((item) => [item.programa, item.colorIndex]));
+
+  for (const punto of puntos) {
+    if (!punto.hora_transmision) continue;
+    const hora = Number(punto.hora_transmision.split(":")[0]);
+    if (!Number.isInteger(hora) || hora < 0 || hora > 23) continue;
+
+    const filaIndex = modo === "dia" ? 0 : mondayFirstWeekday(parseISODate(punto.fecha));
+    const fila = grilla[filaIndex];
+    if (!fila) continue;
+    const celdaActual = fila[hora];
+    if (celdaActual.vistas === null || punto.vistas_diarias > celdaActual.vistas) {
+      fila[hora] = {
+        dia: celdaActual.dia,
+        hora,
+        programa: punto.programa,
+        vistas: punto.vistas_diarias,
+        colorIndex: colorIndexPorPrograma.get(punto.programa) ?? 0,
+      };
+    }
+  }
+
+  const tieneCeldasConDatos = grilla.some((fila) => fila.some((celda) => celda.programa !== null));
+
+  return { grilla, leyenda, tieneCeldasConDatos };
 }

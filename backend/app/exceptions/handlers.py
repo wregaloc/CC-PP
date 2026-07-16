@@ -18,7 +18,7 @@ from app.exceptions.auth import (
     TooManyLoginAttemptsError,
 )
 from app.exceptions.clients import ClientNotFoundError, InvalidLogoImageError
-from app.exceptions.dashboard import InvalidDateRangeError
+from app.exceptions.dashboard import HorarioAudienciaFiltroInvalidoError, InvalidDateRangeError
 from app.exceptions.uploads import FileTooLargeError, UploadNotFoundError, UploadRejectedError
 
 logger = logging.getLogger(__name__)
@@ -139,6 +139,16 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: InvalidDateRangeError
     ) -> JSONResponse:
         return _error(422, "VALIDATION_ERROR", "fecha_inicio no puede ser posterior a fecha_fin")
+
+    @app.exception_handler(HorarioAudienciaFiltroInvalidoError)
+    async def horario_audiencia_filtro_invalido_handler(
+        request: Request, exc: HorarioAudienciaFiltroInvalidoError
+    ) -> JSONResponse:
+        return _error(
+            422,
+            "VALIDATION_ERROR",
+            "Indicá `programa` o `canal` (exactamente uno) para ver el horario de audiencia",
+        )
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:

@@ -5,6 +5,7 @@ lógica de agregación vive en el repository, no aquí ni en el router)."""
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies.dashboard_filters import DateRangeParams
+from app.exceptions.dashboard import HorarioAudienciaFiltroInvalidoError
 from app.models.enums import ProgramType
 from app.repositories import dashboard_repository
 from app.schemas.dashboard import (
@@ -130,7 +131,9 @@ async def get_filter_periodos(session: AsyncSession) -> PeriodoDisponibleRespons
 
 
 async def get_horario_audiencia(
-    session: AsyncSession, filters: DateRangeParams, programa: str
+    session: AsyncSession, filters: DateRangeParams, programa: str | None, canal: str | None
 ) -> list[HorarioAudienciaPoint]:
-    rows = await dashboard_repository.get_horario_audiencia(session, filters, programa)
+    if (programa is None) == (canal is None):
+        raise HorarioAudienciaFiltroInvalidoError()
+    rows = await dashboard_repository.get_horario_audiencia(session, filters, programa, canal)
     return [HorarioAudienciaPoint(**row) for row in rows]

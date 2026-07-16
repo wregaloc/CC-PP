@@ -112,8 +112,14 @@ class HorarioAudienciaPoint(BaseModel):
     """Una fila de fact_audiencia (día) para el heatmap "Horario de mayor
     audiencia" — `hora_transmision` es la hora de inicio del video con más
     vistas ese día (ver fact_audiencia.hora_transmision); si ese día no
-    tiene hora registrada, el punto no puede ubicarse en el heatmap."""
+    tiene hora registrada, el punto no puede ubicarse en el heatmap.
+
+    `programa` viaja siempre (aunque el filtro haya sido por `programa`
+    exacto, donde es redundante en cada fila) para que el modo `canal`
+    —que trae filas de varios programas mezcladas— pueda agruparlas en el
+    frontend sin un segundo viaje al backend."""
 
     fecha: date
     hora_transmision: time | None
     vistas_diarias: int
+    programa: str

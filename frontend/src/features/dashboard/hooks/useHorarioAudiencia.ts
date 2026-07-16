@@ -4,7 +4,8 @@ import { getHorarioAudiencia } from "@/features/dashboard/api/dashboardApi";
 import type { DashboardFilters } from "@/features/dashboard/types";
 
 export function useHorarioAudiencia(
-  params: Pick<DashboardFilters, "fecha_inicio" | "fecha_fin"> & { programa: string },
+  params: Pick<DashboardFilters, "fecha_inicio" | "fecha_fin"> &
+    ({ programa: string; canal?: undefined } | { canal: string; programa?: undefined }),
   enabled: boolean,
 ) {
   return useQuery({

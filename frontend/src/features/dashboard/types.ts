@@ -89,4 +89,5 @@ export interface HorarioAudienciaPoint {
   fecha: string;
   hora_transmision: string | null;
   vistas_diarias: number;
+  programa: string;
 }

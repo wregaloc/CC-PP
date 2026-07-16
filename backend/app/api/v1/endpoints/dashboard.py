@@ -215,17 +215,21 @@ async def get_sentimiento_evolutivo(
 @router.get(
     "/horario-audiencia",
     response_model=list[HorarioAudienciaPoint],
-    summary="Vistas por día y hora de un programa (panel Horario de mayor audiencia)",
-    description="Una fila por día en el rango filtrado, con la hora del video de más vistas ese "
-    "día (fact_audiencia.hora_transmision) — el frontend agrupa por día de semana × hora. "
-    "`programa` es obligatorio: este panel no tiene una vista agregada de 'Todos'. "
-    "Rol requerido: cualquier usuario autenticado.",
+    summary="Vistas por día y hora de un programa o de todos los programas de un canal "
+    "(panel Horario de mayor audiencia)",
+    description="Una fila por (día, programa) en el rango filtrado, con la hora del video de más "
+    "vistas ese día (fact_audiencia.hora_transmision) — el frontend agrupa por día de semana × "
+    "hora. Exactamente uno de `programa`/`canal` es obligatorio: este panel no tiene una vista "
+    "agregada de 'Todos' sin acotar; con `canal` trae las filas de todos sus programas mezcladas "
+    "(diferenciadas por el campo `programa` de cada fila). Rol requerido: cualquier usuario "
+    "autenticado.",
     responses=_AUTH_RESPONSES,
 )
 async def get_horario_audiencia(
-    programa: str = Query(description="Nombre exacto del programa"),
+    programa: str | None = Query(default=None, description="Nombre exacto del programa"),
+    canal: str | None = Query(default=None, description="Nombre exacto del canal"),
     filters: DateRangeParams = Depends(date_range_params),
     user: User = Depends(require_authenticated),
     session: AsyncSession = Depends(get_db),
 ) -> list[HorarioAudienciaPoint]:
-    return await dashboard_service.get_horario_audiencia(session, filters, programa)
+    return await dashboard_service.get_horario_audiencia(session, filters, programa, canal)
