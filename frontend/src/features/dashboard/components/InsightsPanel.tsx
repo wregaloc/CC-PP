@@ -4,6 +4,8 @@ import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
+import { useHorarioAudiencia } from "@/features/dashboard/hooks/useHorarioAudiencia";
+import { useHorarioModo } from "@/features/dashboard/hooks/useHorarioModo";
 import { useKpis } from "@/features/dashboard/hooks/useKpis";
 import {
   useProgramaRankingPosition,
@@ -11,8 +13,15 @@ import {
 } from "@/features/dashboard/hooks/useProgramaRankingPosition";
 import { useSentimentKpis } from "@/features/dashboard/hooks/useSentimentKpis";
 import { useSentimientoEvolutivo } from "@/features/dashboard/hooks/useSentimentoEvolutivo";
-import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
-import { classifyEngagementRate, formatFechaLarga } from "@/features/dashboard/lib/insights";
+import { formatCompactNumber, formatVistasCorto } from "@/features/dashboard/lib/formatters";
+import {
+  construirGrillaHeatmap,
+  construirGrillaHeatmapCanal,
+  encontrarBloqueMax,
+  encontrarBloqueMaxCanal,
+  formatDiaBloque,
+} from "@/features/dashboard/lib/horarioAudiencia";
+import { classifyEngagementRate, formatPeriodoTexto } from "@/features/dashboard/lib/insights";
 import {
   computeMomDeltaPuntos,
   computeMomRange,
@@ -126,25 +135,55 @@ function InsightCard({ icon, children }: { icon: ReactNode; children: ReactNode 
 
 /**
  * Panel INSIGHTS — última sección del dashboard. Traduce los KPIs crudos
- * (vistas, emisiones, posición en el ranking, Engagement Rate) a dos frases
- * en lenguaje natural. Solo tiene sentido para un programa/podcast puntual
- * (comparar "posición en el ranking" o "engagement" de la vista "Todos" no
- * es una pregunta bien definida), así que no se muestra sin ese filtro.
+ * (vistas, emisiones, posición en el ranking, Engagement Rate) a frases en
+ * lenguaje natural. Los insights 1-3 (ranking, engagement, sentimiento)
+ * solo tienen sentido para un programa/podcast puntual (comparar "posición
+ * en el ranking" o "engagement" de la vista "Todos" no es una pregunta bien
+ * definida), así que no se muestran sin ese filtro. El insight de "franja
+ * horaria dominante" es distinto: aplica también con solo un canal
+ * filtrado (ver HorarioInsightCard), porque el heatmap "Horario de Mayor
+ * Audiencia" del que se deriva también se muestra en ese caso.
  */
 export function InsightsPanel() {
   const { filters } = useDashboardFilters();
 
-  if (!filters.programa) {
-    return (
-      <DashboardCard title="Insights">
-        <InsightCard icon={<InfoIcon />}>
-          Elige un programa o podcast en los filtros para ver insights.
-        </InsightCard>
-      </DashboardCard>
-    );
+  if (filters.programa) {
+    return <InsightsContent programa={filters.programa} />;
+  }
+  if (filters.canal) {
+    return <CanalInsightsContent canal={filters.canal} />;
   }
 
-  return <InsightsContent programa={filters.programa} />;
+  return (
+    <DashboardCard title="Insights">
+      <InsightCard icon={<InfoIcon />}>
+        Elige un programa, podcast o canal en los filtros para ver insights.
+      </InsightCard>
+    </DashboardCard>
+  );
+}
+
+/** Sin programa puntual: los insights 1-3 no aplican (ver comentario de
+ * InsightsPanel), así que este panel solo puede ofrecer el insight de
+ * horario — si el heatmap tampoco está visible para este canal (rango
+ * fuera de Semana/Día), no hay nada que mostrar y se explica por qué. */
+function CanalInsightsContent({ canal }: { canal: string }) {
+  const { modo } = useHorarioModo();
+
+  return (
+    <DashboardCard title="Insights">
+      {modo ? (
+        <div className="flex flex-col gap-3">
+          <HorarioInsightCard canal={canal} />
+        </div>
+      ) : (
+        <InsightCard icon={<InfoIcon />}>
+          Selecciona Semana o Día (haz clic en una barra de Evolutivo Detallado) para ver insights de
+          horario de <strong className={HIGHLIGHT_CLASS}>{canal}</strong>.
+        </InsightCard>
+      )}
+    </DashboardCard>
+  );
 }
 
 function InsightsContent({ programa }: { programa: string }) {
@@ -176,12 +215,7 @@ function InsightsContent({ programa }: { programa: string }) {
     : sentimentFilters;
   const momQuery = useSentimientoEvolutivo(momFilters);
 
-  const fechaInicioLarga = formatFechaLarga(filters.fecha_inicio);
-  const fechaFinLarga = formatFechaLarga(filters.fecha_fin);
-  const periodoTexto =
-    fechaInicioLarga && fechaFinLarga
-      ? `Durante el periodo del ${fechaInicioLarga} hasta el ${fechaFinLarga}`
-      : "Considerando todo el histórico disponible";
+  const periodoTexto = formatPeriodoTexto(filters.fecha_inicio, filters.fecha_fin);
 
   const posicion = rankingQuery.data;
   const tipoLabel = posicion?.tipo ? TIPO_PLURAL_LABEL[posicion.tipo] : null;
@@ -314,7 +348,68 @@ function InsightSentences({
           </>
         )}
       </InsightCard>
+
+      <HorarioInsightCard programa={programa} />
     </div>
+  );
+}
+
+/** Insight "franja horaria dominante" — deriva del heatmap "Horario de
+ * Mayor Audiencia" (ver HorarioAudienciaPanel): usa exactamente el mismo
+ * hook de modo (useHorarioModo), la misma query (useHorarioAudiencia,
+ * misma queryKey → comparte caché con el heatmap, no dispara un segundo
+ * fetch) y las mismas funciones de construcción de grilla
+ * (construirGrillaHeatmap/construirGrillaHeatmapCanal) que pintan el
+ * heatmap, para garantizar que el bloque citado acá es exactamente el que
+ * el usuario ve resaltado ahí — nunca un cálculo aparte. No se muestra
+ * (devuelve null) si el heatmap tampoco estaría visible (rango fuera de
+ * Semana/Día) o mientras no hay datos todavía — "mejor esfuerzo", igual
+ * que MomTrendClause más arriba: nunca bloquea el resto del panel. */
+function HorarioInsightCard(props: { programa: string } | { canal: string }) {
+  const { fecha_inicio, fecha_fin, tipo, modo } = useHorarioModo();
+
+  const query = useHorarioAudiencia(
+    "programa" in props
+      ? { programa: props.programa, fecha_inicio, fecha_fin, tipo }
+      : { canal: props.canal, fecha_inicio, fecha_fin, tipo },
+    modo !== null,
+  );
+
+  if (!modo || !query.data) return null;
+
+  const periodoTexto = formatPeriodoTexto(fecha_inicio, fecha_fin);
+
+  if ("programa" in props) {
+    const grilla = construirGrillaHeatmap(query.data, modo);
+    const bloque = encontrarBloqueMax(grilla);
+    if (!bloque) return null;
+    const diaTexto = formatDiaBloque(bloque.dia, modo);
+
+    return (
+      <InsightCard icon={<ClockIcon />}>
+        {periodoTexto}, el horario de mayor audiencia de{" "}
+        <strong className={HIGHLIGHT_CLASS}>"{props.programa}"</strong> es{" "}
+        {diaTexto && <>{diaTexto} </>}
+        a las <strong className={HIGHLIGHT_CLASS}>{bloque.hora}h</strong>, con{" "}
+        <strong className={HIGHLIGHT_CLASS}>{formatVistasCorto(bloque.vistas)} vistas</strong>.
+      </InsightCard>
+    );
+  }
+
+  const resultado = construirGrillaHeatmapCanal(query.data, modo);
+  const bloque = encontrarBloqueMaxCanal(resultado.grilla);
+  if (!bloque) return null;
+  const diaTexto = formatDiaBloque(bloque.dia, modo);
+
+  return (
+    <InsightCard icon={<ClockIcon />}>
+      {periodoTexto}, el horario de mayor audiencia de{" "}
+      <strong className={HIGHLIGHT_CLASS}>{props.canal}</strong> es{" "}
+      {diaTexto && <>{diaTexto} </>}
+      a las <strong className={HIGHLIGHT_CLASS}>{bloque.hora}h</strong>, liderado por{" "}
+      <strong className={HIGHLIGHT_CLASS}>"{bloque.programa}"</strong> con{" "}
+      <strong className={HIGHLIGHT_CLASS}>{formatVistasCorto(bloque.vistas)} vistas</strong>.
+    </InsightCard>
   );
 }
 

@@ -71,6 +71,68 @@ export function construirGrillaHeatmap(
   return grilla;
 }
 
+const DIA_COMPLETO: Record<string, string> = {
+  Lun: "Lunes",
+  Mar: "Martes",
+  Mié: "Miércoles",
+  Jue: "Jueves",
+  Vie: "Viernes",
+  Sáb: "Sábado",
+  Dom: "Domingo",
+};
+
+/** Traduce la abreviatura de día usada en la grilla (Lun/Mar/...) al nombre
+ * completo para el insight "franja horaria dominante" (ver InsightsPanel) —
+ * en modo "dia" la grilla es un solo día (sin variación de día de semana
+ * dentro del heatmap), así que nombrarlo no aporta nada: devuelve `null` y
+ * el llamador omite esa parte de la frase. */
+export function formatDiaBloque(dia: string, modo: "semana" | "dia"): string | null {
+  if (modo === "dia") return null;
+  return DIA_COMPLETO[dia] ?? dia;
+}
+
+export interface BloqueMax {
+  dia: string;
+  hora: number;
+  vistas: number;
+}
+
+/** Encuentra la celda con más vistas de una grilla ya construida por
+ * `construirGrillaHeatmap` — usado por el insight "franja horaria
+ * dominante" (ver InsightsPanel) para leer el mismo dato que pinta el
+ * heatmap, en vez de recalcularlo por su cuenta. */
+export function encontrarBloqueMax(grilla: CeldaHeatmap[][]): BloqueMax | null {
+  let mejor: BloqueMax | null = null;
+  for (const fila of grilla) {
+    for (const celda of fila) {
+      if (celda.vistas !== null && (mejor === null || celda.vistas > mejor.vistas)) {
+        mejor = { dia: celda.dia, hora: celda.hora, vistas: celda.vistas };
+      }
+    }
+  }
+  return mejor;
+}
+
+export interface BloqueMaxCanal extends BloqueMax {
+  programa: string;
+}
+
+/** Igual que `encontrarBloqueMax` pero para la grilla combinada del modo
+ * "canal" (`construirGrillaHeatmapCanal`) — cada celda ya sabe qué programa
+ * la domina, así que el insight puede citarlo directamente sin un segundo
+ * cálculo. */
+export function encontrarBloqueMaxCanal(grilla: CeldaCanalHeatmap[][]): BloqueMaxCanal | null {
+  let mejor: BloqueMaxCanal | null = null;
+  for (const fila of grilla) {
+    for (const celda of fila) {
+      if (celda.programa !== null && celda.vistas !== null && (mejor === null || celda.vistas > mejor.vistas)) {
+        mejor = { dia: celda.dia, hora: celda.hora, vistas: celda.vistas, programa: celda.programa };
+      }
+    }
+  }
+  return mejor;
+}
+
 /** Interpola entre el carbón oscuro y el oro claro de la paleta del
  * dashboard según `ratio` (0-1) — mismo criterio de color que el resto de
  * los paneles (rgba(180,151,90,...)), pero como degradado continuo en vez

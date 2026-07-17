@@ -11,6 +11,33 @@ export function formatFechaLarga(iso: string | undefined): string | null {
   return `${dia} de ${MESES[mes - 1].toLowerCase()} de ${anio}`;
 }
 
+function parseFechaISO(iso: string): { anio: number; mes: number; dia: number } | null {
+  const [anio, mes, dia] = iso.split("-").map(Number);
+  if (!anio || !mes || !dia) return null;
+  return { anio, mes, dia };
+}
+
+/** Frase "Durante el periodo del X hasta el Y" compartida por los insights
+ * que citan el rango de fechas activo (vistas+emisiones, sentimiento,
+ * franja horaria dominante) — si ambas fechas caen en el mismo año, omite
+ * el año de la primera para no repetirlo dos veces seguidas ("del 4 de
+ * mayo hasta el 10 de mayo de 2026" en vez de "...de 2026 hasta el 10 de
+ * mayo de 2026"). Sin alguna de las dos fechas, describe el periodo como
+ * histórico completo. */
+export function formatPeriodoTexto(fechaInicio: string | undefined, fechaFin: string | undefined): string {
+  const inicio = fechaInicio ? parseFechaISO(fechaInicio) : null;
+  const fin = fechaFin ? parseFechaISO(fechaFin) : null;
+  if (!inicio || !fin) return "Considerando todo el histórico disponible";
+
+  const inicioTexto =
+    inicio.anio === fin.anio
+      ? `${inicio.dia} de ${MESES[inicio.mes - 1].toLowerCase()}`
+      : `${inicio.dia} de ${MESES[inicio.mes - 1].toLowerCase()} de ${inicio.anio}`;
+  const finTexto = `${fin.dia} de ${MESES[fin.mes - 1].toLowerCase()} de ${fin.anio}`;
+
+  return `Durante el periodo del ${inicioTexto} hasta el ${finTexto}`;
+}
+
 export interface EngagementClassification {
   label: string;
   rangeLabel: string;

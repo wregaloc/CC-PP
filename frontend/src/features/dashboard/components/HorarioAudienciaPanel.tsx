@@ -5,48 +5,21 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useHorarioAudiencia } from "@/features/dashboard/hooks/useHorarioAudiencia";
+import { useHorarioModo } from "@/features/dashboard/hooks/useHorarioModo";
 import { formatCompactNumber, formatVistasCorto } from "@/features/dashboard/lib/formatters";
 import {
   colorIntensidad,
   colorIntensidadPrograma,
   construirGrillaHeatmap,
   construirGrillaHeatmapCanal,
-  esUnSoloDiaSeleccionado,
-  esUnaSolaSemanaSeleccionada,
   textoParaPrograma,
 } from "@/features/dashboard/lib/horarioAudiencia";
-import type { Granularidad, ProgramType } from "@/features/dashboard/types";
+import type { Granularidad } from "@/features/dashboard/types";
 
 const DISCLAIMER_CLASS = "py-6 text-center text-[13px] text-[#9a8f7a]";
 
 function Disclaimer({ children }: { children: ReactNode }) {
   return <p className={DISCLAIMER_CLASS}>{children}</p>;
-}
-
-/** Condición de visibilidad compartida por el modo "programa" y el modo
- * "canal": el filtro de fechas debe estar recortado a una sola semana o un
- * solo día (ver esUnaSolaSemanaSeleccionada/esUnSoloDiaSeleccionado) —
- * reacciona a la granularidad compartida con Evolutivo Detallado (ver
- * DashboardFiltersContext). */
-function useHorarioModo(): {
-  fecha_inicio: string | undefined;
-  fecha_fin: string | undefined;
-  tipo: ProgramType | undefined;
-  granularidad: Granularidad;
-  setGranularidad: (value: Granularidad) => void;
-  modo: "semana" | "dia" | null;
-} {
-  const {
-    filters: { fecha_inicio, fecha_fin, tipo },
-    granularidad,
-    setGranularidad,
-  } = useDashboardFilters();
-
-  const semanaActiva = granularidad === "semana" && esUnaSolaSemanaSeleccionada(fecha_inicio, fecha_fin);
-  const diaActivo = granularidad === "dia" && esUnSoloDiaSeleccionado(fecha_inicio, fecha_fin);
-  const modo = semanaActiva ? "semana" : diaActivo ? "dia" : null;
-
-  return { fecha_inicio, fecha_fin, tipo, granularidad, setGranularidad, modo };
 }
 
 function GranularidadDisclaimer({
