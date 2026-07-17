@@ -93,7 +93,7 @@ export function FilterBar() {
 
       <div className="flex flex-col gap-1">
         <label htmlFor="filtro-programa" className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-          Programa
+          Nombre Podcast o Programa
         </label>
         <select
           id="filtro-programa"
