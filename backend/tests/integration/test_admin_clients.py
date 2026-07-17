@@ -52,6 +52,73 @@ async def test_list_clients_rejects_non_admin(
     assert response.status_code == 403
 
 
+async def test_list_clients_filters_by_is_active_and_search(
+    client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
+) -> None:
+    """Cubre client_repository.list_paginated: el filtro `search` (ILIKE
+    sobre el nombre) y `is_active` deben combinarse (AND), no aplicarse por
+    separado."""
+    token = await _make_admin_token(client, make_user, "admin-clients-list@podpulse.pe")
+
+    activo = await client.post(
+        CLIENTS_URL, headers=_auth(token), json={"name": "TEST_LISTADO_ACTIVO"}
+    )
+    inactivo = await client.post(
+        CLIENTS_URL, headers=_auth(token), json={"name": "TEST_LISTADO_INACTIVO"}
+    )
+    inactivo_id = inactivo.json()["id"]
+    await client.patch(f"{CLIENTS_URL}/{inactivo_id}/toggle-active", headers=_auth(token))
+
+    solo_activos = await client.get(
+        CLIENTS_URL, headers=_auth(token), params={"is_active": "true", "search": "TEST_LISTADO"}
+    )
+    assert solo_activos.status_code == 200
+    nombres_activos = {item["name"] for item in solo_activos.json()["items"]}
+    assert nombres_activos == {"TEST_LISTADO_ACTIVO"}
+
+    solo_inactivos = await client.get(
+        CLIENTS_URL, headers=_auth(token), params={"is_active": "false", "search": "TEST_LISTADO"}
+    )
+    assert solo_inactivos.status_code == 200
+    nombres_inactivos = {item["name"] for item in solo_inactivos.json()["items"]}
+    assert nombres_inactivos == {"TEST_LISTADO_INACTIVO"}
+
+    assert activo.json()["name"] == "TEST_LISTADO_ACTIVO"  # sanity check del fixture de arriba
+
+
+async def test_list_clients_reports_user_count_per_client(
+    client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
+) -> None:
+    """Cubre el LEFT JOIN + GROUP BY de client_repository.list_paginated —
+    el conteo de usuarios debe reflejarse en el listado, no solo en el
+    detalle de un cliente (get_client)."""
+    token = await _make_admin_token(client, make_user, "admin-clients-listcount@podpulse.pe")
+    created = await client.post(
+        CLIENTS_URL, headers=_auth(token), json={"name": "TEST_LISTADO_CONTEO"}
+    )
+    client_id = created.json()["id"]
+
+    await client.post(
+        "/api/v1/admin/users",
+        headers=_auth(token),
+        json={
+            "email": "contador@podpulse.pe",
+            "full_name": "Usuario Contador",
+            "role": "cliente",
+            "password": "Valida123",
+            "client_id": client_id,
+        },
+    )
+
+    response = await client.get(
+        CLIENTS_URL, headers=_auth(token), params={"search": "TEST_LISTADO_CONTEO"}
+    )
+
+    assert response.status_code == 200
+    item = next(i for i in response.json()["items"] if i["id"] == client_id)
+    assert item["user_count"] == 1
+
+
 async def test_create_and_get_client(
     client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
 ) -> None:
