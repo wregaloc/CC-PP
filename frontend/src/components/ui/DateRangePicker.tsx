@@ -44,12 +44,6 @@ function addMonths(date: Date, months: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + months, 1);
 }
 
-function clamp(iso: string, min?: string, max?: string): string {
-  if (min && iso < min) return min;
-  if (max && iso > max) return max;
-  return iso;
-}
-
 function formatShort(iso?: string): string | null {
   if (!iso) return null;
   const d = fromISO(iso);
@@ -64,11 +58,9 @@ function getCalendarDays(monthDate: Date): Date[] {
 }
 
 /**
- * Selector de rango de fechas con calendario visual + atajos rápidos — el
- * origen (`min`/`max`) se ancla al rango real de datos disponibles
- * (`/filters/periodos`), no a la fecha del sistema: "Última semana" sobre un
- * dataset histórico debe significar "los últimos 7 días con datos", no una
- * semana vacía si "hoy" cae fuera del rango cargado.
+ * Selector de rango de fechas con calendario visual — `min`/`max` acotan
+ * los días seleccionables al rango real de datos disponibles
+ * (`/filters/periodos`), no a la fecha del sistema.
  */
 export function DateRangePicker({ value, onChange, min, max, label = "Rango de fechas" }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
@@ -92,22 +84,6 @@ export function DateRangePicker({ value, onChange, min, max, label = "Rango de f
       document.removeEventListener("keydown", handleEscape);
     };
   }, []);
-
-  const presets = useMemo(() => {
-    const anchor = fromISO(anchorIso);
-    const range = (from: Date, to: Date): DateRange => ({
-      from: clamp(toISO(from), min, max),
-      to: clamp(toISO(to), min, max),
-    });
-    return [
-      { label: "Hoy", range: () => range(anchor, anchor) },
-      { label: "Ayer", range: () => range(addDays(anchor, -1), addDays(anchor, -1)) },
-      { label: "Última semana", range: () => range(addDays(anchor, -6), anchor) },
-      { label: "Último mes", range: () => range(addDays(anchor, -29), anchor) },
-      { label: "Último trimestre", range: () => range(addDays(anchor, -89), anchor) },
-      ...(min && max ? [{ label: "Todo el período", range: (): DateRange => ({ from: min, to: max }) }] : []),
-    ];
-  }, [anchorIso, min, max]);
 
   const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
 
@@ -155,100 +131,67 @@ export function DateRangePicker({ value, onChange, min, max, label = "Rango de f
 
       {open && (
         <div
-          className="absolute top-full z-20 mt-1 flex flex-col gap-3 rounded-lg border border-neutral-200
-            bg-white p-3 shadow-lg dark:border-neutral-800 dark:bg-neutral-900 sm:flex-row"
+          className="absolute top-full z-20 mt-1 flex w-72 flex-col gap-2 rounded-lg border border-neutral-200
+            bg-white p-3 shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
         >
-          <div className="flex flex-row gap-1 border-b border-neutral-200 pb-2 dark:border-neutral-800
-            sm:w-36 sm:flex-col sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3">
-            {presets.map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                onClick={() => {
-                  const next = preset.range();
-                  onChange(next);
-                  if (next.from) setVisibleMonth(fromISO(next.from));
-                  setOpen(false);
-                }}
-                className="rounded-md px-2 py-1.5 text-left text-sm text-neutral-700 hover:bg-neutral-100
-                  dark:text-neutral-300 dark:hover:bg-neutral-800"
-              >
-                {preset.label}
-              </button>
-            ))}
+          <div className="flex items-center justify-between">
             <button
               type="button"
-              onClick={() => {
-                onChange({ from: undefined, to: undefined });
-                setOpen(false);
-              }}
-              className="mt-auto rounded-md px-2 py-1.5 text-left text-sm font-medium text-blue-600
-                hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
+              aria-label="Mes anterior"
+              onClick={() => setVisibleMonth((m) => addMonths(m, -1))}
+              className="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
             >
-              Restablecer
+              ‹
+            </button>
+            <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+              {MONTH_LABELS[visibleMonth.getMonth()]} {visibleMonth.getFullYear()}
+            </span>
+            <button
+              type="button"
+              aria-label="Mes siguiente"
+              onClick={() => setVisibleMonth((m) => addMonths(m, 1))}
+              className="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+            >
+              ›
             </button>
           </div>
 
-          <div className="flex w-72 flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                aria-label="Mes anterior"
-                onClick={() => setVisibleMonth((m) => addMonths(m, -1))}
-                className="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-              >
-                ‹
-              </button>
-              <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                {MONTH_LABELS[visibleMonth.getMonth()]} {visibleMonth.getFullYear()}
-              </span>
-              <button
-                type="button"
-                aria-label="Mes siguiente"
-                onClick={() => setVisibleMonth((m) => addMonths(m, 1))}
-                className="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-              >
-                ›
-              </button>
-            </div>
+          <div className="grid grid-cols-7 gap-y-1 text-center text-xs text-neutral-400 dark:text-neutral-500">
+            {WEEKDAY_LABELS.map((wd) => (
+              <span key={wd}>{wd}</span>
+            ))}
+          </div>
 
-            <div className="grid grid-cols-7 gap-y-1 text-center text-xs text-neutral-400 dark:text-neutral-500">
-              {WEEKDAY_LABELS.map((wd) => (
-                <span key={wd}>{wd}</span>
-              ))}
-            </div>
+          <div className="grid grid-cols-7 gap-y-1 text-center text-sm">
+            {calendarDays.map((day) => {
+              const iso = toISO(day);
+              const isCurrentMonth = day.getMonth() === visibleMonth.getMonth();
+              const isDisabled = (!!min && iso < min) || (!!max && iso > max);
+              const isStart = iso === value.from;
+              const isEnd = iso === value.to;
+              const isInRange = !!value.from && !!value.to && iso > value.from && iso < value.to;
+              const isEdge = isStart || isEnd;
 
-            <div className="grid grid-cols-7 gap-y-1 text-center text-sm">
-              {calendarDays.map((day) => {
-                const iso = toISO(day);
-                const isCurrentMonth = day.getMonth() === visibleMonth.getMonth();
-                const isDisabled = (!!min && iso < min) || (!!max && iso > max);
-                const isStart = iso === value.from;
-                const isEnd = iso === value.to;
-                const isInRange = !!value.from && !!value.to && iso > value.from && iso < value.to;
-                const isEdge = isStart || isEnd;
-
-                return (
-                  <button
-                    key={iso}
-                    type="button"
-                    disabled={isDisabled}
-                    onClick={() => handleDayClick(day)}
-                    className={`aspect-square rounded-md text-xs transition-colors ${
-                      isDisabled
-                        ? "cursor-not-allowed text-neutral-300 dark:text-neutral-700"
-                        : !isCurrentMonth
-                          ? "text-neutral-300 hover:bg-neutral-100 dark:text-neutral-600 dark:hover:bg-neutral-800"
-                          : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                    } ${isInRange ? "bg-blue-50 dark:bg-blue-950/40" : ""} ${
-                      isEdge ? "!bg-blue-600 font-semibold !text-white" : ""
-                    }`}
-                  >
-                    {day.getDate()}
-                  </button>
-                );
-              })}
-            </div>
+              return (
+                <button
+                  key={iso}
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => handleDayClick(day)}
+                  className={`aspect-square rounded-md text-xs transition-colors ${
+                    isDisabled
+                      ? "cursor-not-allowed text-neutral-300 dark:text-neutral-700"
+                      : !isCurrentMonth
+                        ? "text-neutral-300 hover:bg-neutral-100 dark:text-neutral-600 dark:hover:bg-neutral-800"
+                        : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                  } ${isInRange ? "bg-blue-50 dark:bg-blue-950/40" : ""} ${
+                    isEdge ? "!bg-blue-600 font-semibold !text-white" : ""
+                  }`}
+                >
+                  {day.getDate()}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
