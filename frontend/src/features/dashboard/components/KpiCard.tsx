@@ -10,6 +10,12 @@ interface KpiCardProps {
   /** Contenido opcional junto al valor grande, misma línea (p. ej. un
    * indicador de variación MoM) — ver SentimentKpiCards. */
   trailing?: ReactNode;
+  /** Texto chico debajo del valor, siempre visible (a diferencia de
+   * `description`, que solo se ve en el tooltip nativo) — p. ej. "por
+   * emisión" / "por programa" en el KPI Promedio de Vistas, para aclarar a
+   * qué unidad corresponde el promedio sin que el usuario tenga que pasar
+   * el mouse. */
+  helperText?: string;
 }
 
 /** Colores de acento opcionales — convención estándar de sentimiento
@@ -33,7 +39,7 @@ const ACCENT_VALUE_CLASS: Record<KpiAccent, string> = {
  * para el contenedor visual compartido). `description` se muestra como
  * tooltip nativo (`title`) — suficiente para una tarjeta simple, sin
  * necesidad de un componente de tooltip propio. */
-export function KpiCard({ label, value, description, accent, trailing }: KpiCardProps) {
+export function KpiCard({ label, value, description, accent, trailing, helperText }: KpiCardProps) {
   return (
     <div
       className="flex flex-col gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-4 py-3
@@ -57,6 +63,7 @@ export function KpiCard({ label, value, description, accent, trailing }: KpiCard
         </span>
         {trailing}
       </span>
+      {helperText && <span className="text-[11px] text-neutral-400 dark:text-neutral-500">{helperText}</span>}
     </div>
   );
 }

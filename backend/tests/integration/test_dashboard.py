@@ -162,6 +162,23 @@ async def test_kpis_filters_by_categoria(client: httpx.AsyncClient, seeded: dict
     assert response.json()["vistas_totales"] == 800
 
 
+async def test_kpis_reports_programas_distintos(client: httpx.AsyncClient, seeded: dict) -> None:
+    """COUNT(DISTINCT programa_id) — TEST_A/TEST_B/TEST_C tienen datos en el
+    rango sembrado (3 programas); Canal X solo tiene TEST_A y TEST_C (2)."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+    rango = {"fecha_inicio": "2030-01-01", "fecha_fin": "2030-01-02"}
+
+    sin_filtro = await client.get(f"{DASHBOARD_URL}/kpis", headers=_auth(token), params=rango)
+    assert sin_filtro.status_code == 200
+    assert sin_filtro.json()["programas_distintos"] == 3
+
+    por_canal = await client.get(
+        f"{DASHBOARD_URL}/kpis", headers=_auth(token), params={**rango, "canal": "Canal X"}
+    )
+    assert por_canal.status_code == 200
+    assert por_canal.json()["programas_distintos"] == 2
+
+
 async def test_kpis_filters_by_tipo(client: httpx.AsyncClient, seeded: dict) -> None:
     """TEST_A y TEST_B son podcast (300+500=800 vistas), TEST_C es programa
     (300 vistas) — mismo criterio de filtro que evolutivo/ranking, ver

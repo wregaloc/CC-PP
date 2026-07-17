@@ -25,6 +25,7 @@ export interface KpisResponse {
   emisiones: number;
   pico_max_vivo: number | null;
   promedio_vivo: number | null;
+  programas_distintos: number;
 }
 
 export interface SentimentKpisResponse {

@@ -44,6 +44,12 @@ class KpisResponse(BaseModel):
     promedio_vivo: float | None = Field(
         description="AVG(DATA[Promedio en Vivo]) en el rango filtrado (programa/canal/fechas)"
     )
+    programas_distintos: int = Field(
+        description="COUNT(DISTINCT programa_id) en el rango filtrado — usado por el frontend para "
+        "calcular 'Promedio de Vistas' (vistas_totales / programas_distintos) cuando el filtro no "
+        "acota a un único programa; con un programa puntual el frontend usa vistas_totales / "
+        "emisiones en su lugar."
+    )
 
 
 class SentimentKpisResponse(BaseModel):

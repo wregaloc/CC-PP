@@ -62,7 +62,12 @@ async def get_kpis(
     """TDD §8.3 /dashboard/kpis. Medidas DAX: Vistas Totales=SUM(Vistas_Diarias),
     Engagement Rate=AVERAGE(Engagement), Emisiones=SUM(Es_Emision), Pico Max en
     Vivo=MAX(Pico Max), Promedio en Vivo=AVG(Promedio en Vivo), todas respetando
-    Programa + Canal + Categoría + Tipo + fechas."""
+    Programa + Canal + Categoría + Tipo + fechas.
+
+    `programas_distintos` (nuevo, panel "Promedio de Vistas") es
+    COUNT(DISTINCT programa_id) bajo el mismo filtro — no requiere el join a
+    Programa (programa_id ya vive en fact_audiencia), así que se calcula
+    siempre, incluso en la vista "Todos" sin ningún filtro de programa."""
     stmt = select(
         func.coalesce(func.sum(FactAudiencia.vistas_diarias), 0).label("vistas_totales"),
         func.avg(FactAudiencia.engagement).label("engagement_rate"),
@@ -71,6 +76,7 @@ async def get_kpis(
         func.coalesce(func.sum(FactAudiencia.es_emision), 0).label("emisiones"),
         func.max(FactAudiencia.pico_max_vivo).label("pico_max_vivo"),
         func.avg(FactAudiencia.promedio_vivo).label("promedio_vivo"),
+        func.count(func.distinct(FactAudiencia.programa_id)).label("programas_distintos"),
     )
     if programa is not None or canal is not None or categoria is not None or tipo is not None:
         stmt = stmt.join(Programa, FactAudiencia.programa_id == Programa.id)
@@ -93,6 +99,7 @@ async def get_kpis(
         "emisiones": row.emisiones,
         "pico_max_vivo": row.pico_max_vivo,
         "promedio_vivo": _as_float(row.promedio_vivo),
+        "programas_distintos": row.programas_distintos,
     }
 
 
