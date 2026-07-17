@@ -82,8 +82,8 @@ function HorarioAudienciaContent({ programa }: { programa: string }) {
 
   const grilla = useMemo(() => {
     if (!modo || !query.data) return null;
-    return construirGrillaHeatmap(query.data, modo);
-  }, [modo, query.data]);
+    return construirGrillaHeatmap(query.data, modo, fecha_inicio);
+  }, [modo, query.data, fecha_inicio]);
 
   const maxVistas = useMemo(() => {
     if (!grilla) return 0;
@@ -133,8 +133,8 @@ function HorarioAudienciaPorCanalContent({ canal }: { canal: string }) {
 
   const resultado = useMemo(() => {
     if (!modo || !query.data) return null;
-    return construirGrillaHeatmapCanal(query.data, modo);
-  }, [modo, query.data]);
+    return construirGrillaHeatmapCanal(query.data, modo, fecha_inicio);
+  }, [modo, query.data, fecha_inicio]);
 
   return (
     <DashboardCard title="Horario de Mayor Audiencia">
@@ -179,7 +179,7 @@ function HeatmapGrid({
   maxVistas: number;
 }) {
   return (
-    <div className="grid w-full gap-0.5" style={{ gridTemplateColumns: "2.25rem repeat(24, minmax(0, 1fr))" }}>
+    <div className="grid w-full gap-0.5" style={{ gridTemplateColumns: "4.5rem repeat(24, minmax(0, 1fr))" }}>
       <div />
       {Array.from({ length: 24 }, (_, hora) => (
         <div key={hora} className="text-center text-[9px] leading-none text-[#9a8f7a]">
@@ -203,7 +203,7 @@ function FilaHeatmap({
 }) {
   return (
     <>
-      <div className="flex items-center text-xs font-medium text-[#c9bfa8]">{fila[0].dia}</div>
+      <div className="flex items-center whitespace-nowrap text-xs font-medium text-[#c9bfa8]">{fila[0].dia}</div>
       {fila.map((celda) => {
         const ratio = maxVistas > 0 && celda.vistas !== null ? celda.vistas / maxVistas : 0;
         return (
@@ -249,7 +249,7 @@ function Leyenda() {
  * "programa", para que el texto entre). */
 function HeatmapGridCanal({ grilla }: { grilla: ReturnType<typeof construirGrillaHeatmapCanal>["grilla"] }) {
   return (
-    <div className="grid w-full gap-0.5" style={{ gridTemplateColumns: "2.25rem repeat(24, minmax(0, 1fr))" }}>
+    <div className="grid w-full gap-0.5" style={{ gridTemplateColumns: "4.5rem repeat(24, minmax(0, 1fr))" }}>
       <div />
       {Array.from({ length: 24 }, (_, hora) => (
         <div key={hora} className="text-center text-[9px] leading-none text-[#9a8f7a]">
@@ -267,7 +267,7 @@ function HeatmapGridCanal({ grilla }: { grilla: ReturnType<typeof construirGrill
 function FilaHeatmapCanal({ fila }: { fila: ReturnType<typeof construirGrillaHeatmapCanal>["grilla"][number] }) {
   return (
     <>
-      <div className="flex items-center text-xs font-medium text-[#c9bfa8]">{fila[0].dia}</div>
+      <div className="flex items-center whitespace-nowrap text-xs font-medium text-[#c9bfa8]">{fila[0].dia}</div>
       {fila.map((celda) => {
         if (!celda.programa || celda.vistas === null || celda.colorIndex === null) {
           return (

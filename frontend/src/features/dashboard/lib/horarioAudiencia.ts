@@ -36,6 +36,27 @@ export function esUnSoloDiaSeleccionado(
 
 const DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
+const DIA_COMPLETO: Record<string, string> = {
+  Lun: "Lunes",
+  Mar: "Martes",
+  Mié: "Miércoles",
+  Jue: "Jueves",
+  Vie: "Viernes",
+  Sáb: "Sábado",
+  Dom: "Domingo",
+};
+
+/** Nombre completo del día de semana ("Lunes") a partir de una fecha ISO —
+ * usado como etiqueta de fila del heatmap en modo "día" (antes mostraba la
+ * fecha ISO cruda, p. ej. "2026-06-12", que no dice qué día de la semana
+ * es a simple vista). Si la fecha viene vacía o inválida, devuelve la
+ * entrada tal cual en vez de "undefined" en pantalla. */
+function diaCompletoDesdeFecha(fechaISO: string): string {
+  if (!fechaISO) return fechaISO;
+  const abreviatura = DIAS_SEMANA[mondayFirstWeekday(parseISODate(fechaISO))];
+  return abreviatura ? DIA_COMPLETO[abreviatura] : fechaISO;
+}
+
 export interface CeldaHeatmap {
   dia: string;
   hora: number;
@@ -47,12 +68,18 @@ export interface CeldaHeatmap {
  * la hora del video de más vistas de ESE día (no una distribución horaria
  * real), así que cada día contribuye a lo sumo a una sola celda; un día sin
  * `hora_transmision` (dato no disponible para esa carga) no puede ubicarse
- * y se omite del heatmap en vez de adivinar la hora. */
+ * y se omite del heatmap en vez de adivinar la hora.
+ *
+ * `fechaDia` (modo "día") es la fecha seleccionada en el filtro, no la del
+ * primer punto de datos — así la fila sigue mostrando el día correcto
+ * ("Viernes") aunque ese día no tenga ningún dato todavía. */
 export function construirGrillaHeatmap(
   puntos: HorarioAudienciaPoint[],
   modo: "semana" | "dia",
+  fechaDia?: string,
 ): CeldaHeatmap[][] {
-  const dias = modo === "dia" ? [puntos[0]?.fecha ?? ""] : DIAS_SEMANA;
+  const dias =
+    modo === "dia" ? [diaCompletoDesdeFecha(fechaDia ?? puntos[0]?.fecha ?? "")] : DIAS_SEMANA;
   const grilla: CeldaHeatmap[][] = dias.map((dia) =>
     Array.from({ length: 24 }, (_, hora) => ({ dia, hora, vistas: null })),
   );
@@ -70,16 +97,6 @@ export function construirGrillaHeatmap(
 
   return grilla;
 }
-
-const DIA_COMPLETO: Record<string, string> = {
-  Lun: "Lunes",
-  Mar: "Martes",
-  Mié: "Miércoles",
-  Jue: "Jueves",
-  Vie: "Viernes",
-  Sáb: "Sábado",
-  Dom: "Domingo",
-};
 
 /** Traduce la abreviatura de día usada en la grilla (Lun/Mar/...) al nombre
  * completo para el insight "franja horaria dominante" (ver InsightsPanel) —
@@ -230,8 +247,10 @@ export interface GrillaCanalHeatmap {
 export function construirGrillaHeatmapCanal(
   puntos: HorarioAudienciaPoint[],
   modo: "semana" | "dia",
+  fechaDia?: string,
 ): GrillaCanalHeatmap {
-  const dias = modo === "dia" ? [puntos[0]?.fecha ?? ""] : DIAS_SEMANA;
+  const dias =
+    modo === "dia" ? [diaCompletoDesdeFecha(fechaDia ?? puntos[0]?.fecha ?? "")] : DIAS_SEMANA;
   const grilla: CeldaCanalHeatmap[][] = dias.map((dia) =>
     Array.from({ length: 24 }, (_, hora) => ({ dia, hora, programa: null, vistas: null, colorIndex: null })),
   );

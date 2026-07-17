@@ -113,6 +113,26 @@ function HeartIcon() {
   );
 }
 
+/** Ícono del insight "franja horaria dominante" (ver HorarioInsightCard) —
+ * distinto de ClockIcon (ya usado por el insight de Engagement Rate) para
+ * no repetir ícono dentro del mismo panel; una flama evoca "horario pico". */
+function FlameIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4 shrink-0"
+      aria-hidden="true"
+    >
+      <path d="M12 2c1 3-2 4-2 7a2 2 0 0 0 4 0c1 1 2 2.5 2 4.5A6 6 0 0 1 4 13.5C4 8 8 6 12 2z" />
+    </svg>
+  );
+}
+
 /** Tarjeta de un insight: barra de acento + ícono + texto, mismo acento
  * oro/carbón que InfoBanner en AuspiciosPanel — repetido acá en vez de
  * compartido porque ese componente es privado de ese archivo (ver su
@@ -380,15 +400,15 @@ function HorarioInsightCard(props: { programa: string } | { canal: string }) {
   const periodoTexto = formatPeriodoTexto(fecha_inicio, fecha_fin);
 
   if ("programa" in props) {
-    const grilla = construirGrillaHeatmap(query.data, modo);
+    const grilla = construirGrillaHeatmap(query.data, modo, fecha_inicio);
     const bloque = encontrarBloqueMax(grilla);
     if (!bloque) return null;
     const diaTexto = formatDiaBloque(bloque.dia, modo);
 
     return (
-      <InsightCard icon={<ClockIcon />}>
+      <InsightCard icon={<FlameIcon />}>
         {periodoTexto}, el horario de mayor audiencia de{" "}
-        <strong className={HIGHLIGHT_CLASS}>"{props.programa}"</strong> es{" "}
+        <strong className={HIGHLIGHT_CLASS}>"{props.programa}"</strong> fue{" "}
         {diaTexto && <>{diaTexto} </>}
         a las <strong className={HIGHLIGHT_CLASS}>{bloque.hora}h</strong>, con{" "}
         <strong className={HIGHLIGHT_CLASS}>{formatVistasCorto(bloque.vistas)} vistas</strong>.
@@ -396,15 +416,15 @@ function HorarioInsightCard(props: { programa: string } | { canal: string }) {
     );
   }
 
-  const resultado = construirGrillaHeatmapCanal(query.data, modo);
+  const resultado = construirGrillaHeatmapCanal(query.data, modo, fecha_inicio);
   const bloque = encontrarBloqueMaxCanal(resultado.grilla);
   if (!bloque) return null;
   const diaTexto = formatDiaBloque(bloque.dia, modo);
 
   return (
-    <InsightCard icon={<ClockIcon />}>
+    <InsightCard icon={<FlameIcon />}>
       {periodoTexto}, el horario de mayor audiencia de{" "}
-      <strong className={HIGHLIGHT_CLASS}>{props.canal}</strong> es{" "}
+      <strong className={HIGHLIGHT_CLASS}>{props.canal}</strong> fue{" "}
       {diaTexto && <>{diaTexto} </>}
       a las <strong className={HIGHLIGHT_CLASS}>{bloque.hora}h</strong>, liderado por{" "}
       <strong className={HIGHLIGHT_CLASS}>"{bloque.programa}"</strong> con{" "}
