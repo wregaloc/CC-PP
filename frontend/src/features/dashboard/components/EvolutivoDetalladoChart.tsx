@@ -17,8 +17,9 @@ import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
+import { useContainerWidth } from "@/features/dashboard/hooks/useContainerWidth";
 import { useEvolutivo } from "@/features/dashboard/hooks/useEvolutivo";
-import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
+import { formatCompactNumber, formatVistasCorto } from "@/features/dashboard/lib/formatters";
 import { rangoFromPeriodo } from "@/features/dashboard/lib/periodo";
 import { TAB_GROUP_CLASS, tabButtonClass } from "@/features/dashboard/lib/tabStyles";
 import type { Granularidad, MetricaSecundaria } from "@/features/dashboard/types";
@@ -48,7 +49,14 @@ interface VistasLabelProps {
   y?: number | string;
   width?: number | string;
   value?: number | string;
+  formatValue?: (value: number) => string;
 }
+
+/** Umbral de píxeles disponibles por barra por debajo del cual se abrevia el
+ * número (353,355,972 → 353M) en vez de mostrarlo completo — con muchas
+ * barras (rango largo o granularidad fina) el número completo se superpone
+ * con la barra vecina o con la etiqueta de la línea de Emisiones. */
+const COMPACT_LABEL_THRESHOLD_PX = 70;
 
 /** Label del valor de "Vistas Totales" sobre cada barra, renderizado a mano
  * en vez de usar `position="insideTop"` de LabelList: cuando solo hay una
@@ -58,7 +66,7 @@ interface VistasLabelProps {
  * largas) y termina distorsionando un número simple. Un `content` custom
  * evita esa lógica por completo — ver Text.js::getWordsByLines en
  * node_modules/recharts. */
-function VistasLabel({ x, y, width, value }: VistasLabelProps) {
+function VistasLabel({ x, y, width, value, formatValue = formatCompactNumber }: VistasLabelProps) {
   if (x === undefined || y === undefined || width === undefined || value === undefined) return null;
   const numX = Number(x);
   const numY = Number(y);
@@ -72,7 +80,7 @@ function VistasLabel({ x, y, width, value }: VistasLabelProps) {
       fontWeight={500}
       fill={BAR_LABEL_COLOR}
     >
-      {formatCompactNumber(Number(value))}
+      {formatValue(Number(value))}
     </text>
   );
 }
@@ -118,6 +126,7 @@ export function EvolutivoDetalladoChart() {
   const { filters, setFechaInicio, setFechaFin, granularidad, setGranularidad } =
     useDashboardFilters();
   const [metricaSecundaria, setMetricaSecundaria] = useState<MetricaSecundaria>("emisiones");
+  const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>();
 
   const query = useEvolutivo({ ...filters, granularidad, metrica_secundaria: metricaSecundaria });
 
@@ -125,6 +134,11 @@ export function EvolutivoDetalladoChart() {
     const data = query.data ?? [];
     return data.map((punto) => ({ ...punto, rango: rangoFromPeriodo(punto.periodo, granularidad) }));
   }, [query.data, granularidad]);
+
+  // Antes de la primera medición (containerWidth === 0) se asume espacio
+  // completo, para no mostrar un flash abreviado en el primer render.
+  const pxPerBar = containerWidth > 0 ? containerWidth / Math.max(chartData.length, 1) : Infinity;
+  const formatValue = pxPerBar < COMPACT_LABEL_THRESHOLD_PX ? formatVistasCorto : formatCompactNumber;
 
   const metricaLabel = METRICA_TABS.find((tab) => tab.value === metricaSecundaria)?.label ?? "";
 
@@ -183,7 +197,7 @@ export function EvolutivoDetalladoChart() {
         onRetry={query.refetch}
         loadingFallback={<Skeleton className="h-80 w-full" />}
       >
-        <div className="h-80 w-full">
+        <div ref={containerRef} className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 24, right: 48, left: 48, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-200 dark:stroke-neutral-800" />
@@ -205,7 +219,10 @@ export function EvolutivoDetalladoChart() {
                 activeBar={{ fill: BAR_HOVER_COLOR, fillOpacity: BAR_OPACITY }}
                 cursor="pointer"
               >
-                <LabelList dataKey="vistas_totales" content={VistasLabel} />
+                <LabelList
+                  dataKey="vistas_totales"
+                  content={(props: VistasLabelProps) => <VistasLabel {...props} formatValue={formatValue} />}
+                />
                 {chartData.map((punto) => {
                   const isSelected =
                     filters.fecha_inicio === punto.rango.from && filters.fecha_fin === punto.rango.to;
@@ -234,7 +251,7 @@ export function EvolutivoDetalladoChart() {
                   dataKey="metrica_secundaria"
                   position="top"
                   offset={12}
-                  formatter={(value: number) => formatCompactNumber(value)}
+                  formatter={(value: number) => formatValue(value)}
                   className="text-[10px]"
                   fill={LINE_COLOR}
                 />

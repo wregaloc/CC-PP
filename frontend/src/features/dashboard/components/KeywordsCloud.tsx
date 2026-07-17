@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
+import { useContainerWidth } from "@/features/dashboard/hooks/useContainerWidth";
 import { useKeywords } from "@/features/dashboard/hooks/useKeywords";
 import { MESES, mesesFromRango } from "@/features/dashboard/lib/mes";
 import { TAB_GROUP_CLASS, tabButtonClass } from "@/features/dashboard/lib/tabStyles";
@@ -24,29 +25,6 @@ const SENTIMIENTO_COLOR: Record<string, string> = {
 };
 
 const CLOUD_HEIGHT_PX = 288;
-
-/** Mide el ancho disponible del contenedor con ResizeObserver — el layout de
- * la nube necesita píxeles reales (no solo CSS) para calcular colisiones.
- * Usa un callback ref (no `useRef` + efecto de una sola vez): el div real se
- * monta recién cuando QueryState deja de mostrar el Skeleton de carga, así
- * que un efecto con `[]` que lea `ref.current` al montar el componente
- * llegaría demasiado temprano y nunca detectaría el nodo. */
-function useContainerWidth<T extends HTMLElement>() {
-  const [node, setNode] = useState<T | null>(null);
-  const [width, setWidth] = useState(0);
-  const ref = useCallback((el: T | null) => setNode(el), []);
-
-  useEffect(() => {
-    if (!node) return;
-    const observer = new ResizeObserver(([entry]) => {
-      setWidth(entry.contentRect.width);
-    });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [node]);
-
-  return [ref, width] as const;
-}
 
 /**
  * Nube de palabras "SENTIMENT DE [PROGRAMA]" — Doc-Migración §5.1: KEYWORDS
