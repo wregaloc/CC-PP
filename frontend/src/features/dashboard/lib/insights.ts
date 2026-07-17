@@ -17,17 +17,25 @@ function parseFechaISO(iso: string): { anio: number; mes: number; dia: number } 
   return { anio, mes, dia };
 }
 
-/** Frase "Durante el periodo del X hasta el Y" compartida por los insights
- * que citan el rango de fechas activo (vistas+emisiones, sentimiento,
- * franja horaria dominante) — si ambas fechas caen en el mismo año, omite
- * el año de la primera para no repetirlo dos veces seguidas ("del 4 de
- * mayo hasta el 10 de mayo de 2026" en vez de "...de 2026 hasta el 10 de
- * mayo de 2026"). Sin alguna de las dos fechas, describe el periodo como
- * histórico completo. */
+/** Frase de periodo compartida por los insights que citan el rango de
+ * fechas activo (vistas+emisiones, sentimiento, franja horaria dominante):
+ * - Mismo día (fechaInicio === fechaFin, p. ej. granularidad "Día"): "El 21
+ *   de mayo de 2026" — decir "del 21 de mayo hasta el 21 de mayo" sería
+ *   redundante.
+ * - Mismo año, días distintos: "Durante el periodo del 4 de mayo hasta el
+ *   10 de mayo de 2026" — omite el año de la primera fecha para no
+ *   repetirlo dos veces seguidas.
+ * - Años distintos: ambas fechas con su año completo.
+ * - Sin alguna de las dos fechas: describe el periodo como histórico
+ *   completo. */
 export function formatPeriodoTexto(fechaInicio: string | undefined, fechaFin: string | undefined): string {
   const inicio = fechaInicio ? parseFechaISO(fechaInicio) : null;
   const fin = fechaFin ? parseFechaISO(fechaFin) : null;
   if (!inicio || !fin) return "Considerando todo el histórico disponible";
+
+  if (fechaInicio === fechaFin) {
+    return `El ${fin.dia} de ${MESES[fin.mes - 1].toLowerCase()} de ${fin.anio}`;
+  }
 
   const inicioTexto =
     inicio.anio === fin.anio
