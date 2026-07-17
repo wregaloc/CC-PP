@@ -12,14 +12,11 @@ import { DashboardFiltersProvider } from "@/features/dashboard/context/Dashboard
 /**
  * Página 1 — Vista General / Ranking (Doc-Migración §5.1).
  *
- * Diferencia deliberada frente al original: el Power BI original tenía esta
- * página con fondo negro fijo, independiente del tema del sistema. Esta app
- * usa `darkMode: "media"` (sigue `prefers-color-scheme`) en toda la
- * aplicación — forzar un fondo oscuro fijo solo en esta página requeriría
- * cambiar la estrategia de dark mode del proyecto (a `class`) para una sola
- * página, lo cual es un cambio de arquitectura de theming no solicitado. Se
- * documenta como diferencia conocida en el informe final en vez de
- * implementarlo en silencio.
+ * El fondo oscuro fijo (igual que el Power BI original) ya no depende de
+ * esta página en particular: `darkMode: "class"` + `class="dark"` fija en
+ * index.html fuerzan tema oscuro para toda la app, para todos los usuarios,
+ * sin importar la preferencia del sistema (decisión del usuario — antes
+ * seguía `prefers-color-scheme` vía `darkMode: "media"`).
  */
 export function DashboardPage() {
   return (

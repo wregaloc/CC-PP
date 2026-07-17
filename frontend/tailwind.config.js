@@ -1,9 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-  // Respeta la preferencia del sistema por defecto (ver skill react-enterprise-frontend).
-  // Cambiar a 'class' si en una fase futura se agrega un toggle manual de tema.
-  darkMode: "media",
+  // Tema oscuro forzado siempre, para todos los usuarios, sin depender de la
+  // preferencia del sistema — decisión del usuario (antes seguía
+  // prefers-color-scheme vía "media"; ver class="dark" fija en index.html).
+  darkMode: "class",
   theme: {
     extend: {},
   },
