@@ -133,9 +133,13 @@ async def get_filter_periodos(session: AsyncSession) -> PeriodoDisponibleRespons
 
 
 async def get_horario_audiencia(
-    session: AsyncSession, filters: DateRangeParams, programa: str | None, canal: str | None
+    session: AsyncSession,
+    filters: DateRangeParams,
+    programa: str | None,
+    canal: str | None,
+    tipo: ProgramType | None = None,
 ) -> list[HorarioAudienciaPoint]:
     if (programa is None) == (canal is None):
         raise HorarioAudienciaFiltroInvalidoError()
-    rows = await dashboard_repository.get_horario_audiencia(session, filters, programa, canal)
+    rows = await dashboard_repository.get_horario_audiencia(session, filters, programa, canal, tipo)
     return [HorarioAudienciaPoint(**row) for row in rows]

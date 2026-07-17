@@ -230,8 +230,9 @@ async def get_sentimiento_evolutivo(
 async def get_horario_audiencia(
     programa: str | None = Query(default=None, description="Nombre exacto del programa"),
     canal: str | None = Query(default=None, description="Nombre exacto del canal"),
+    tipo: ProgramType | None = Query(default=None, description="podcast | programa"),
     filters: DateRangeParams = Depends(date_range_params),
     user: User = Depends(require_authenticated),
     session: AsyncSession = Depends(get_db),
 ) -> list[HorarioAudienciaPoint]:
-    return await dashboard_service.get_horario_audiencia(session, filters, programa, canal)
+    return await dashboard_service.get_horario_audiencia(session, filters, programa, canal, tipo)

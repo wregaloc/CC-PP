@@ -92,7 +92,7 @@ export async function getRankingProgramas(params: {
 }
 
 export async function getHorarioAudiencia(
-  params: Pick<DashboardFilters, "fecha_inicio" | "fecha_fin"> &
+  params: Pick<DashboardFilters, "fecha_inicio" | "fecha_fin" | "tipo"> &
     ({ programa: string; canal?: undefined } | { canal: string; programa?: undefined }),
 ): Promise<HorarioAudienciaPoint[]> {
   const response = await httpClient.get<HorarioAudienciaPoint[]>("/dashboard/horario-audiencia", {

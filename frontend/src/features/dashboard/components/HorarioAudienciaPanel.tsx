@@ -15,7 +15,7 @@ import {
   esUnaSolaSemanaSeleccionada,
   textoParaPrograma,
 } from "@/features/dashboard/lib/horarioAudiencia";
-import type { Granularidad } from "@/features/dashboard/types";
+import type { Granularidad, ProgramType } from "@/features/dashboard/types";
 
 const DISCLAIMER_CLASS = "py-6 text-center text-[13px] text-[#9a8f7a]";
 
@@ -31,12 +31,13 @@ function Disclaimer({ children }: { children: ReactNode }) {
 function useHorarioModo(): {
   fecha_inicio: string | undefined;
   fecha_fin: string | undefined;
+  tipo: ProgramType | undefined;
   granularidad: Granularidad;
   setGranularidad: (value: Granularidad) => void;
   modo: "semana" | "dia" | null;
 } {
   const {
-    filters: { fecha_inicio, fecha_fin },
+    filters: { fecha_inicio, fecha_fin, tipo },
     granularidad,
     setGranularidad,
   } = useDashboardFilters();
@@ -45,7 +46,7 @@ function useHorarioModo(): {
   const diaActivo = granularidad === "dia" && esUnSoloDiaSeleccionado(fecha_inicio, fecha_fin);
   const modo = semanaActiva ? "semana" : diaActivo ? "dia" : null;
 
-  return { fecha_inicio, fecha_fin, granularidad, setGranularidad, modo };
+  return { fecha_inicio, fecha_fin, tipo, granularidad, setGranularidad, modo };
 }
 
 function GranularidadDisclaimer({
@@ -102,9 +103,9 @@ export function HorarioAudienciaPanel() {
 }
 
 function HorarioAudienciaContent({ programa }: { programa: string }) {
-  const { fecha_inicio, fecha_fin, granularidad, setGranularidad, modo } = useHorarioModo();
+  const { fecha_inicio, fecha_fin, tipo, granularidad, setGranularidad, modo } = useHorarioModo();
 
-  const query = useHorarioAudiencia({ programa, fecha_inicio, fecha_fin }, modo !== null);
+  const query = useHorarioAudiencia({ programa, fecha_inicio, fecha_fin, tipo }, modo !== null);
 
   const grilla = useMemo(() => {
     if (!modo || !query.data) return null;
@@ -153,9 +154,9 @@ function HorarioAudienciaContent({ programa }: { programa: string }) {
 }
 
 function HorarioAudienciaPorCanalContent({ canal }: { canal: string }) {
-  const { fecha_inicio, fecha_fin, granularidad, setGranularidad, modo } = useHorarioModo();
+  const { fecha_inicio, fecha_fin, tipo, granularidad, setGranularidad, modo } = useHorarioModo();
 
-  const query = useHorarioAudiencia({ canal, fecha_inicio, fecha_fin }, modo !== null);
+  const query = useHorarioAudiencia({ canal, fecha_inicio, fecha_fin, tipo }, modo !== null);
 
   const resultado = useMemo(() => {
     if (!modo || !query.data) return null;

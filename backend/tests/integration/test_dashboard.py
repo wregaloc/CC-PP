@@ -509,6 +509,31 @@ async def test_horario_audiencia_por_canal_incluye_todos_sus_programas(
     assert programas == {"TEST_A", "TEST_C"}
 
 
+async def test_horario_audiencia_por_canal_filtra_por_tipo(
+    client: httpx.AsyncClient, seeded: dict
+) -> None:
+    """Canal X tiene TEST_A (podcast) y TEST_C (programa) — `tipo` debe acotar
+    el modo canal a solo los programas de ese tipo, mismo criterio que
+    kpis/evolutivo/ranking."""
+    token = await _login(client, "viewer@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/horario-audiencia",
+        headers=_auth(token),
+        params={
+            "canal": "Canal X",
+            "tipo": "podcast",
+            "fecha_inicio": "2030-01-01",
+            "fecha_fin": "2030-01-02",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    programas = {row["programa"] for row in body}
+    assert programas == {"TEST_A"}
+
+
 async def test_ranking_programas_dense_rank_ties(client: httpx.AsyncClient, seeded: dict) -> None:
     token = await _login(client, "viewer@podpulse.pe", "Valida123")
 
