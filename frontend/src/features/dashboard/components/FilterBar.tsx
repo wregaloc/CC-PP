@@ -72,26 +72,6 @@ export function FilterBar() {
       />
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="filtro-programa" className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-          Programa
-        </label>
-        <select
-          id="filtro-programa"
-          value={filters.programa ?? ""}
-          onChange={(event) => setPrograma(toUndefined(event.target.value))}
-          className="min-w-[10rem] rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900
-            dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-        >
-          <option value="">Todos</option>
-          {programasQuery.data?.map((programa) => (
-            <option key={programa} value={programa}>
-              {programa}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="flex flex-col gap-1">
         <label htmlFor="filtro-canal" className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
           Canal
         </label>
@@ -106,6 +86,26 @@ export function FilterBar() {
           {canalesQuery.data?.map((canal) => (
             <option key={canal} value={canal}>
               {canal}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="filtro-programa" className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+          Programa
+        </label>
+        <select
+          id="filtro-programa"
+          value={filters.programa ?? ""}
+          onChange={(event) => setPrograma(toUndefined(event.target.value))}
+          className="min-w-[10rem] rounded-md border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900
+            dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+        >
+          <option value="">Todos</option>
+          {programasQuery.data?.map((programa) => (
+            <option key={programa} value={programa}>
+              {programa}
             </option>
           ))}
         </select>
