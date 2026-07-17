@@ -12,11 +12,10 @@ import { DashboardFiltersProvider } from "@/features/dashboard/context/Dashboard
 /**
  * Página 1 — Vista General / Ranking (Doc-Migración §5.1).
  *
- * El fondo oscuro fijo (igual que el Power BI original) ya no depende de
- * esta página en particular: `darkMode: "class"` + `class="dark"` fija en
- * index.html fuerzan tema oscuro para toda la app, para todos los usuarios,
- * sin importar la preferencia del sistema (decisión del usuario — antes
- * seguía `prefers-color-scheme` vía `darkMode: "media"`).
+ * El tema (oscuro por default, igual que el Power BI original) ya no
+ * depende de esta página en particular: `darkMode: "class"` + ThemeProvider
+ * lo aplican a toda la app vía la clase `dark` en `<html>`, con toggle
+ * manual disponible en el Navbar (ver ThemeProvider).
  */
 export function DashboardPage() {
   return (
