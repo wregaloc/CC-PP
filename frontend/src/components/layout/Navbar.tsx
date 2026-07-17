@@ -6,7 +6,9 @@ import { PodPulseLogo } from "@/components/layout/PodPulseLogo";
 import { useAuth } from "@/features/auth/context/AuthContext";
 
 interface NavbarProps {
-  onToggleSidebar: () => void;
+  /** Ausente cuando el rol actual no tiene sidebar que mostrar/ocultar (ver
+   * AppLayout) — en ese caso no se renderiza el botón hamburguesa. */
+  onToggleSidebar?: () => void;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -33,14 +35,16 @@ export function Navbar({ onToggleSidebar }: NavbarProps) {
   return (
     <header className="flex h-16 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800">
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          aria-label="Abrir/cerrar menú de navegación"
-          className="rounded-md p-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 lg:hidden"
-        >
-          <span aria-hidden="true">☰</span>
-        </button>
+        {onToggleSidebar && (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            aria-label="Abrir/cerrar menú de navegación"
+            className="rounded-md p-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 lg:hidden"
+          >
+            <span aria-hidden="true">☰</span>
+          </button>
+        )}
         <PodPulseLogo />
       </div>
 
