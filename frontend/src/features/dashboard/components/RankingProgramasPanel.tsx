@@ -18,6 +18,24 @@ const MIN_SEARCH_LENGTH = 2;
 const SEARCH_DEBOUNCE_MS = 350;
 type ViewMode = "grafico" | "tabla";
 
+interface ProgramaTickProps {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+}
+
+/** Tick del eje Y con clase Tailwind `dark:` (no un `fill` fijo): el objeto
+ * `tick={{ fill: ... }}` de Recharts solo admite un color hardcodeado, que
+ * se veía bien sobre el fondo oscuro pero quedaba ilegible en tema claro. */
+function ProgramaTick({ x, y, payload }: ProgramaTickProps) {
+  if (x === undefined || y === undefined || !payload) return null;
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" fontSize={12} className="fill-neutral-700 dark:fill-neutral-200">
+      {payload.value}
+    </text>
+  );
+}
+
 // Valores reales de DATA[Formato] confirmados por el usuario: Grabado, Vivo,
 // Finalizado (no se asume agrupación entre ellos — se muestran tal cual
 // están en el dato, ver conversación de aprobación). El tab "Finalizado" se
@@ -202,7 +220,7 @@ export function RankingProgramasPanel({ className }: { className?: string }) {
                   type="category"
                   dataKey="programa"
                   width={140}
-                  tick={{ fontSize: 12, fill: "#f5f5f5" }}
+                  tick={<ProgramaTick />}
                   interval={0}
                 />
                 <Tooltip formatter={(value: number) => formatCompactNumber(value)} />
