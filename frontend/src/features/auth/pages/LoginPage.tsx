@@ -65,7 +65,7 @@ export function LoginPage() {
 
       <GemBackground />
 
-      <div className="relative z-10 mx-auto flex w-full justify-center">
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl justify-end">
         <div
           className="w-full max-w-sm rounded-2xl p-8 backdrop-blur-xl"
           style={{
