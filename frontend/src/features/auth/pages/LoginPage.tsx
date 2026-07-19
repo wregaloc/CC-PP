@@ -11,7 +11,7 @@ interface LocationState {
 }
 
 const INPUT_CLASS =
-  "w-full rounded-lg border border-[rgba(180,151,90,0.2)] bg-[rgba(8,7,5,0.75)] px-3.5 py-2.5 text-sm text-[#f5f1e8] " +
+  "w-full rounded-lg border border-[rgba(180,151,90,0.2)] bg-[rgba(8,7,5,0.75)] px-5 py-3.5 text-lg text-[#f5f1e8] " +
   "placeholder:text-[#8c7a5a] focus:outline-none focus:ring-2 focus:ring-[rgba(180,151,90,0.5)]";
 
 export function LoginPage() {
@@ -67,7 +67,13 @@ export function LoginPage() {
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl justify-end">
         <div
-          className="w-full max-w-sm rounded-2xl p-8 backdrop-blur-xl"
+          // Ancho en `vw` (no un `max-w-*` fijo): un tamaño fijo en rem
+          // ocupa una fracción distinta de la pantalla según el zoom del
+          // navegador (a menos zoom, el viewport en px CSS es más grande, y
+          // la tarjeta se ve cada vez más chica en proporción). Con `vw` la
+          // tarjeta ocupa siempre ~20% del ancho de viewport sin importar el
+          // zoom, calibrado para verse igual que al 50% de zoom.
+          className="w-full max-w-[clamp(20rem,20vw,40rem)] rounded-2xl p-12 backdrop-blur-xl"
           style={{
             background: "rgba(14, 12, 9, 0.6)",
             border: "1px solid rgba(180, 151, 90, 0.25)",
@@ -79,17 +85,17 @@ export function LoginPage() {
               heading real queda oculto visualmente (el logo ya comunica la
               marca) solo para lectores de pantalla / tests de accesibilidad. */}
           <h1 className="sr-only">PodPulse</h1>
-          <div className="mb-2 flex items-center justify-center">
+          <div className="mb-4 flex scale-150 items-center justify-center">
             <PodPulseLogo />
           </div>
           <p
-            className="mb-8 text-center text-[10px] uppercase tracking-[0.3em]"
+            className="mb-10 mt-4 text-center text-sm uppercase tracking-[0.3em]"
             style={{ color: "rgba(180,151,90,0.7)" }}
           >
             Inicia sesión para continuar
           </p>
 
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
             {error && (
               <div
                 role="alert"
@@ -100,7 +106,7 @@ export function LoginPage() {
             )}
 
             <div>
-              <label htmlFor={emailId} className="mb-1.5 block text-xs text-[rgba(245,241,232,0.6)]">
+              <label htmlFor={emailId} className="mb-2 block text-base text-[rgba(245,241,232,0.6)]">
                 Email
               </label>
               <input
@@ -116,7 +122,7 @@ export function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor={passwordId} className="mb-1.5 block text-xs text-[rgba(245,241,232,0.6)]">
+              <label htmlFor={passwordId} className="mb-2 block text-base text-[rgba(245,241,232,0.6)]">
                 Contraseña
               </label>
               <input
@@ -134,7 +140,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-2 w-full rounded-lg py-2.5 text-sm font-semibold text-[#0e0c09] transition-transform
+              className="mt-2 w-full rounded-lg py-3.5 text-lg font-semibold text-[#0e0c09] transition-transform
                 hover:scale-[1.02] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
               style={{ background: "linear-gradient(90deg, #8a6f3c, #b4975a, #d8bc82)" }}
             >

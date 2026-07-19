@@ -43,6 +43,14 @@ export function GemBackground() {
     const lightDeep = new THREE.PointLight(0x8a6f3c, 2.4, 20);
     scene.add(lightGold, lightIvory, lightDeep);
 
+    // Grupo que agrupa toda la gema (núcleo, cáscaras, satélites) — desplazado
+    // a la izquierda del origen para no quedar tapada por la tarjeta de
+    // login (anclada a la derecha, ver LoginPage `justify-end`). Las luces y
+    // el polvo quedan fuera del grupo (ambiente, no "la gema" en sí).
+    const gemGroup = new THREE.Group();
+    gemGroup.position.x = -1;
+    scene.add(gemGroup);
+
     // Núcleo: gema facetada en bronce oscuro, las luces oro pintan las facetas.
     const coreGeo = new THREE.IcosahedronGeometry(1.35, 0);
     const coreMat = new THREE.MeshStandardMaterial({
@@ -52,7 +60,7 @@ export function GemBackground() {
       flatShading: true,
     });
     const core = new THREE.Mesh(coreGeo, coreMat);
-    scene.add(core);
+    gemGroup.add(core);
 
     // Brillo interior: oro cálido "respirando" adentro.
     const glowGeo = new THREE.IcosahedronGeometry(1.15, 1);
@@ -62,7 +70,7 @@ export function GemBackground() {
       opacity: 0.1,
     });
     const glow = new THREE.Mesh(glowGeo, glowMat);
-    scene.add(glow);
+    gemGroup.add(glow);
 
     // Doble cáscara de wireframe en tonos oro.
     const shell1Geo = new THREE.IcosahedronGeometry(2.05, 1);
@@ -73,7 +81,7 @@ export function GemBackground() {
       opacity: 0.3,
     });
     const shell1 = new THREE.Mesh(shell1Geo, shell1Mat);
-    scene.add(shell1);
+    gemGroup.add(shell1);
 
     const shell2Geo = new THREE.IcosahedronGeometry(2.55, 1);
     const shell2Mat = new THREE.MeshBasicMaterial({
@@ -83,7 +91,7 @@ export function GemBackground() {
       opacity: 0.12,
     });
     const shell2 = new THREE.Mesh(shell2Geo, shell2Mat);
-    scene.add(shell2);
+    gemGroup.add(shell2);
 
     // Satélites: tres esferas doradas pequeñas en órbitas inclinadas.
     const satellites: THREE.Mesh[] = [];
@@ -93,7 +101,7 @@ export function GemBackground() {
       const satMat = new THREE.MeshBasicMaterial({ color: satColors[i] });
       const sat = new THREE.Mesh(satGeo, satMat);
       sat.userData = { phase: (i / 3) * Math.PI * 2, tilt: 0.4 + i * 0.5, radius: 2.05 };
-      scene.add(sat);
+      gemGroup.add(sat);
       satellites.push(sat);
     }
 
