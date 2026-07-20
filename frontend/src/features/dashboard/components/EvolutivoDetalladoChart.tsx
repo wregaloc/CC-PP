@@ -44,8 +44,13 @@ const BAR_TOP_BORDER_COLOR = "rgba(180,151,90,0.3)";
 const LINE_COLOR = "#d8bc82"; // oro claro — antes amarillo (#eab308), Doc-Migración §5.2: "Línea = Emisiones"
 const LINE_DOT_COLOR = "#b4975a";
 const BAR_LABEL_COLOR = "#f5f1e8";
-const FORECAST_LINE_COLOR = "#8fb4c9"; // celeste apagado — se distingue a propósito del dorado
-// de "vistas reales"/"emisiones", para que la proyección nunca se confunda con un dato real.
+// Azul validado con dataviz/scripts/validate_palette.js contra el dorado de
+// marca (#d8bc82) sobre fondo oscuro neutral-900: ΔE 23.2 (visión normal) /
+// 19.6 (protanopía) — el celeste más pálido probado antes (#8fb4c9) fallaba
+// el piso de separación (ΔE 13.9, "difícil de distinguir incluso con visión
+// normal"). Contraste 6.06:1 contra el fondo, suficiente para texto chico.
+const FORECAST_COLOR = "#5b9bd5";
+const FORECAST_SERIES_NAME = "Proyección (resto del año)";
 
 /** Granularidades para las que el backend puede calcular una proyección
  * (ver forecast_service — a nivel día es demasiado ruidoso, a nivel año no
@@ -58,6 +63,7 @@ interface VistasLabelProps {
   width?: number | string;
   value?: number | string;
   formatValue?: (value: number) => string;
+  textColor?: string;
 }
 
 /** Umbral de píxeles disponibles por barra por debajo del cual se abrevia el
@@ -74,7 +80,14 @@ const COMPACT_LABEL_THRESHOLD_PX = 70;
  * largas) y termina distorsionando un número simple. Un `content` custom
  * evita esa lógica por completo — ver Text.js::getWordsByLines en
  * node_modules/recharts. */
-function VistasLabel({ x, y, width, value, formatValue = formatCompactNumber }: VistasLabelProps) {
+function VistasLabel({
+  x,
+  y,
+  width,
+  value,
+  formatValue = formatCompactNumber,
+  textColor = BAR_LABEL_COLOR,
+}: VistasLabelProps) {
   if (x === undefined || y === undefined || width === undefined || value === undefined) return null;
   const numX = Number(x);
   const numY = Number(y);
@@ -86,10 +99,57 @@ function VistasLabel({ x, y, width, value, formatValue = formatCompactNumber }: 
       textAnchor="middle"
       fontSize={10}
       fontWeight={500}
-      fill={BAR_LABEL_COLOR}
+      fill={textColor}
     >
       {formatValue(Number(value))}
     </text>
+  );
+}
+
+interface ChartTooltipItem {
+  name?: string;
+  value?: number | string | null;
+  color?: string;
+  payload?: { es_proyectado?: boolean };
+}
+
+interface ChartTooltipProps {
+  active?: boolean;
+  label?: string;
+  payload?: ChartTooltipItem[];
+}
+
+/** Tooltip a medida — dos ajustes sobre el default de Recharts:
+ * 1) La barra y la línea de proyección son la misma serie dibujada dos
+ *    veces (relleno + trazo) → se colapsan por `name`, la primera gana.
+ * 2) La línea repite el valor del último mes real para nacer empalmada con
+ *    esa barra (ver `tendencia_proyectada` en chartData) — un empalme
+ *    puramente visual, no un dato de proyección real de ese mes, así que
+ *    esa fila se excluye ahí aunque la línea sí tenga valor. */
+function ChartTooltip({ active, label, payload }: ChartTooltipProps) {
+  if (!active || !payload?.length) return null;
+  const vistos = new Set<string>();
+  const filas = payload.filter((item) => {
+    if (item.value === null || item.value === undefined || !item.name) return false;
+    if (item.name === FORECAST_SERIES_NAME && !item.payload?.es_proyectado) return false;
+    if (vistos.has(item.name)) return false;
+    vistos.add(item.name);
+    return true;
+  });
+  if (filas.length === 0) return null;
+  return (
+    <div
+      className="rounded-md border px-3 py-2 text-xs"
+      style={{ background: "rgba(14, 12, 9, 0.94)", borderColor: "rgba(180, 151, 90, 0.3)" }}
+    >
+      <p className="mb-1 font-semibold text-neutral-300">{label}</p>
+      {filas.map((item) => (
+        <p key={item.name} className="flex items-center gap-1.5 text-neutral-200">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+          {item.name}: {typeof item.value === "number" ? formatCompactNumber(item.value) : "—"}
+        </p>
+      ))}
+    </div>
   );
 }
 
@@ -119,6 +179,14 @@ function BarWithTopBorder({ x, y, width, height, fill, fillOpacity, stroke, stro
       )}
     </g>
   );
+}
+
+/** Barra de proyección: mismo componente que las barras reales
+ * (`BarWithTopBorder`), pero con contorno sólido azul en vez del filo
+ * dorado sutil — reutiliza la rama `stroke` ya existente para que la
+ * geometría (esquinas redondeadas) sea idéntica y solo cambie el color. */
+function projectedBarShape(props: BarShapeProps) {
+  return <BarWithTopBorder {...props} stroke={FORECAST_COLOR} strokeWidth={1.5} />;
 }
 
 /**
@@ -155,10 +223,13 @@ export function EvolutivoDetalladoChart() {
       ...punto,
       rango: punto.es_proyectado ? null : rangoFromPeriodo(punto.periodo, granularidad),
       vistas_reales: punto.es_proyectado ? undefined : punto.vistas_totales,
-      // El punto real justo antes de la proyección repite su valor acá
-      // para que la línea punteada arranque pegada a la última barra real,
-      // sin un salto visual en el medio.
-      vistas_proyectadas:
+      // Solo la barra: nunca tiene valor en el último mes real, para que esa
+      // barra siga siendo 100% "Vistas Totales" y nunca "Proyección".
+      vistas_proyectadas: punto.es_proyectado ? punto.vistas_totales : undefined,
+      // Solo la línea: además del valor proyectado, repite el del último mes
+      // real (empalme, puramente visual — ver ChartTooltip para cómo se
+      // excluye ese punto del tooltip pese a tener valor acá).
+      tendencia_proyectada:
         punto.es_proyectado || idx === primerProyectadoIndex - 1 ? punto.vistas_totales : undefined,
     }));
   }, [query.data, granularidad]);
@@ -234,7 +305,7 @@ export function EvolutivoDetalladoChart() {
     >
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
         Haz clic en una barra para filtrar toda la página por ese período.
-        {hayProyeccion && " La línea punteada es una proyección, no un dato real."}
+        {hayProyeccion && " Las barras con borde punteado son una proyección, no un dato real."}
       </p>
 
       <QueryState
@@ -256,14 +327,13 @@ export function EvolutivoDetalladoChart() {
                   la línea contra el piso del gráfico. */}
               <YAxis yAxisId="vistas" hide />
               <YAxis yAxisId="metrica" orientation="right" hide domain={["auto", "auto"]} />
-              <Tooltip
-                formatter={(value: number) => (value == null ? "—" : formatCompactNumber(value))}
-              />
+              <Tooltip content={<ChartTooltip />} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar
                 yAxisId="vistas"
                 dataKey="vistas_reales"
                 name="Vistas Totales"
+                stackId="vistas"
                 fill={BAR_COLOR}
                 fillOpacity={BAR_OPACITY}
                 shape={BarWithTopBorder}
@@ -292,15 +362,33 @@ export function EvolutivoDetalladoChart() {
                 })}
               </Bar>
               {hayProyeccion && (
+                <Bar
+                  yAxisId="vistas"
+                  dataKey="vistas_proyectadas"
+                  name={FORECAST_SERIES_NAME}
+                  stackId="vistas"
+                  fill={FORECAST_COLOR}
+                  fillOpacity={0.55}
+                  shape={projectedBarShape}
+                >
+                  <LabelList
+                    dataKey="vistas_proyectadas"
+                    content={(props: VistasLabelProps) => (
+                      <VistasLabel {...props} formatValue={formatValue} textColor={FORECAST_COLOR} />
+                    )}
+                  />
+                </Bar>
+              )}
+              {hayProyeccion && (
                 <Line
                   yAxisId="vistas"
                   type="monotone"
-                  dataKey="vistas_proyectadas"
-                  name="Proyección (resto del año)"
-                  stroke={FORECAST_LINE_COLOR}
+                  dataKey="tendencia_proyectada"
+                  name={FORECAST_SERIES_NAME}
+                  legendType="none"
+                  stroke={FORECAST_COLOR}
                   strokeWidth={2}
-                  strokeDasharray="6 4"
-                  dot={{ r: 3, fill: FORECAST_LINE_COLOR, stroke: FORECAST_LINE_COLOR }}
+                  dot={{ r: 3, fill: FORECAST_COLOR, stroke: FORECAST_COLOR }}
                   connectNulls
                 />
               )}
