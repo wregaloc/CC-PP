@@ -16,6 +16,7 @@ import {
 import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { ChartTooltip } from "@/features/dashboard/components/ChartTooltip";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useContainerWidth } from "@/features/dashboard/hooks/useContainerWidth";
@@ -103,53 +104,6 @@ function VistasLabel({
     >
       {formatValue(Number(value))}
     </text>
-  );
-}
-
-interface ChartTooltipItem {
-  name?: string;
-  value?: number | string | null;
-  color?: string;
-  payload?: { es_proyectado?: boolean };
-}
-
-interface ChartTooltipProps {
-  active?: boolean;
-  label?: string;
-  payload?: ChartTooltipItem[];
-}
-
-/** Tooltip a medida — dos ajustes sobre el default de Recharts:
- * 1) La barra y la línea de proyección son la misma serie dibujada dos
- *    veces (relleno + trazo) → se colapsan por `name`, la primera gana.
- * 2) La línea repite el valor del último mes real para nacer empalmada con
- *    esa barra (ver `tendencia_proyectada` en chartData) — un empalme
- *    puramente visual, no un dato de proyección real de ese mes, así que
- *    esa fila se excluye ahí aunque la línea sí tenga valor. */
-function ChartTooltip({ active, label, payload }: ChartTooltipProps) {
-  if (!active || !payload?.length) return null;
-  const vistos = new Set<string>();
-  const filas = payload.filter((item) => {
-    if (item.value === null || item.value === undefined || !item.name) return false;
-    if (item.name === FORECAST_SERIES_NAME && !item.payload?.es_proyectado) return false;
-    if (vistos.has(item.name)) return false;
-    vistos.add(item.name);
-    return true;
-  });
-  if (filas.length === 0) return null;
-  return (
-    <div
-      className="rounded-md border px-3 py-2 text-xs"
-      style={{ background: "rgba(14, 12, 9, 0.94)", borderColor: "rgba(180, 151, 90, 0.3)" }}
-    >
-      <p className="mb-1 font-semibold text-neutral-300">{label}</p>
-      {filas.map((item) => (
-        <p key={item.name} className="flex items-center gap-1.5 text-neutral-200">
-          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
-          {item.name}: {typeof item.value === "number" ? formatCompactNumber(item.value) : "—"}
-        </p>
-      ))}
-    </div>
   );
 }
 
@@ -327,7 +281,18 @@ export function EvolutivoDetalladoChart() {
                   la línea contra el piso del gráfico. */}
               <YAxis yAxisId="vistas" hide />
               <YAxis yAxisId="metrica" orientation="right" hide domain={["auto", "auto"]} />
-              <Tooltip content={<ChartTooltip />} />
+              <Tooltip
+                content={
+                  <ChartTooltip
+                    filterItem={(item) =>
+                      !(
+                        item.name === FORECAST_SERIES_NAME &&
+                        !(item.payload as { es_proyectado?: boolean } | undefined)?.es_proyectado
+                      )
+                    }
+                  />
+                }
+              />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar
                 yAxisId="vistas"
@@ -373,9 +338,7 @@ export function EvolutivoDetalladoChart() {
                 >
                   <LabelList
                     dataKey="vistas_proyectadas"
-                    content={(props: VistasLabelProps) => (
-                      <VistasLabel {...props} formatValue={formatValue} textColor={FORECAST_COLOR} />
-                    )}
+                    content={(props: VistasLabelProps) => <VistasLabel {...props} formatValue={formatValue} />}
                   />
                 </Bar>
               )}

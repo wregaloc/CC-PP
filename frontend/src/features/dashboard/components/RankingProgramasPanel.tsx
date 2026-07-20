@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { TextField } from "@/components/ui/TextField";
+import { ChartTooltip } from "@/features/dashboard/components/ChartTooltip";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { RankingTable } from "@/features/dashboard/components/RankingTable";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
@@ -223,7 +224,7 @@ export function RankingProgramasPanel({ className }: { className?: string }) {
                   tick={<ProgramaTick />}
                   interval={0}
                 />
-                <Tooltip formatter={(value: number) => formatCompactNumber(value)} />
+                <Tooltip content={<ChartTooltip valueFormatter={formatCompactNumber} />} />
                 <Bar dataKey="vistas_totales" name="Vistas Totales" radius={[0, 4, 4, 0]} cursor="pointer">
                   {chartData.map((entry) => (
                     <Cell

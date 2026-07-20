@@ -42,7 +42,7 @@ const ACCENT_VALUE_CLASS: Record<KpiAccent, string> = {
 export function KpiCard({ label, value, description, accent, trailing, helperText }: KpiCardProps) {
   return (
     <div
-      className="flex flex-col gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-4 py-3
+      className="flex min-w-0 flex-col gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-4 py-3
         dark:border-neutral-800 dark:bg-neutral-950"
       title={description}
     >
@@ -53,9 +53,9 @@ export function KpiCard({ label, value, description, accent, trailing, helperTex
       >
         {label}
       </span>
-      <span className="flex items-center gap-2">
+      <span className="flex min-w-0 items-center gap-2">
         <span
-          className={`text-xl font-semibold ${
+          className={`min-w-0 break-words text-xl font-semibold ${
             accent ? ACCENT_VALUE_CLASS[accent] : "text-neutral-900 dark:text-neutral-100"
           }`}
         >

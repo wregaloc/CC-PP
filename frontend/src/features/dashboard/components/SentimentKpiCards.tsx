@@ -2,6 +2,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 
 import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ChartTooltip } from "@/features/dashboard/components/ChartTooltip";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { KpiCard } from "@/features/dashboard/components/KpiCard";
 import type { KpiAccent } from "@/features/dashboard/components/KpiCard";
@@ -154,8 +155,12 @@ export function SentimentKpiCards() {
               />
               <YAxis domain={["auto", "auto"]} hide />
               <Tooltip
-                formatter={(value: number, name: string) => [formatPercent(value), name]}
-                labelFormatter={(label) => `Mes: ${label}`}
+                content={
+                  <ChartTooltip
+                    labelFormatter={(label) => `Mes: ${label}`}
+                    valueFormatter={(value) => formatPercent(value)}
+                  />
+                }
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Line
