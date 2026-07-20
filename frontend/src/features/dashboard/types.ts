@@ -63,7 +63,8 @@ export interface AuspiciadorTopItem {
 export interface EvolutivoPoint {
   periodo: string;
   vistas_totales: number;
-  metrica_secundaria: number;
+  metrica_secundaria: number | null;
+  es_proyectado: boolean;
 }
 
 export interface ProgramaRankingItem {

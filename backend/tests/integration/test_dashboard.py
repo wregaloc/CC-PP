@@ -397,8 +397,8 @@ async def test_evolutivo_groups_by_dia(client: httpx.AsyncClient, seeded: dict) 
     assert response.status_code == 200
     body = response.json()
     assert body == [
-        {"periodo": "2030-01-01", "vistas_totales": 150, "metrica_secundaria": 20},
-        {"periodo": "2030-01-02", "vistas_totales": 150, "metrica_secundaria": 10},
+        {"periodo": "2030-01-01", "vistas_totales": 150, "metrica_secundaria": 20, "es_proyectado": False},
+        {"periodo": "2030-01-02", "vistas_totales": 150, "metrica_secundaria": 10, "es_proyectado": False},
     ]
 
 
@@ -459,6 +459,78 @@ async def test_evolutivo_filters_by_tipo(client: httpx.AsyncClient, seeded: dict
     assert response_podcast.json()[0]["vistas_totales"] == 800
     assert response_programa.status_code == 200
     assert response_programa.json()[0]["vistas_totales"] == 300
+
+
+@pytest.fixture
+async def seeded_forecast(db_session: AsyncSession, make_user, make_programa):
+    """4 meses de histórico (suficiente para que forecast_service arme una
+    proyección) sobre un programa dedicado, con un usuario Admin y uno
+    Cliente para probar el gateo por rol de `incluir_forecast`."""
+    admin = await make_user(email="admin-forecast@podpulse.pe", password="Valida123", role=UserRole.ADMIN)
+    cliente = await make_user(
+        email="cliente-forecast@podpulse.pe", password="Valida123", role=UserRole.CLIENTE
+    )
+    programa = await make_programa("TEST_FORECAST", "Canal Forecast", tipo=ProgramType.PODCAST)
+
+    db_session.add_all(
+        [
+            FactAudiencia(
+                fecha=date(2030, mes, 1), mes_num=mes, anio=2030, semana_num=1,
+                programa_id=programa.id, es_emision=1, vistas_diarias=100 * mes,
+            )
+            for mes in range(1, 5)
+        ]
+    )
+    await db_session.flush()
+
+    return {"admin": admin, "cliente": cliente, "programa": programa}
+
+
+async def test_evolutivo_incluir_forecast_agrega_proyeccion_para_admin(
+    client: httpx.AsyncClient, seeded_forecast: dict
+) -> None:
+    token = await _login(client, "admin-forecast@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/evolutivo",
+        headers=_auth(token),
+        params={
+            "granularidad": "mes",
+            "metrica_secundaria": "emisiones",
+            "programa": "TEST_FORECAST",
+            "incluir_forecast": "true",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 12  # 4 reales + 8 proyectados (mayo-diciembre)
+    reales, proyectados = body[:4], body[4:]
+    assert all(p["es_proyectado"] is False for p in reales)
+    assert all(p["es_proyectado"] is True for p in proyectados)
+    assert all(p["metrica_secundaria"] is None for p in proyectados)
+
+
+async def test_evolutivo_incluir_forecast_se_ignora_para_no_admin(
+    client: httpx.AsyncClient, seeded_forecast: dict
+) -> None:
+    token = await _login(client, "cliente-forecast@podpulse.pe", "Valida123")
+
+    response = await client.get(
+        f"{DASHBOARD_URL}/evolutivo",
+        headers=_auth(token),
+        params={
+            "granularidad": "mes",
+            "metrica_secundaria": "emisiones",
+            "programa": "TEST_FORECAST",
+            "incluir_forecast": "true",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 4  # sin proyección — el rol no es Admin
+    assert all(p["es_proyectado"] is False for p in body)
 
 
 async def test_horario_audiencia_returns_one_row_per_dia_en_rango(

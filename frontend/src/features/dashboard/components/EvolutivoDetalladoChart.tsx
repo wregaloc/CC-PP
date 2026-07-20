@@ -15,6 +15,7 @@ import {
 
 import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useAuth } from "@/features/auth/context/AuthContext";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useContainerWidth } from "@/features/dashboard/hooks/useContainerWidth";
@@ -43,6 +44,13 @@ const BAR_TOP_BORDER_COLOR = "rgba(180,151,90,0.3)";
 const LINE_COLOR = "#d8bc82"; // oro claro — antes amarillo (#eab308), Doc-Migración §5.2: "Línea = Emisiones"
 const LINE_DOT_COLOR = "#b4975a";
 const BAR_LABEL_COLOR = "#f5f1e8";
+const FORECAST_LINE_COLOR = "#8fb4c9"; // celeste apagado — se distingue a propósito del dorado
+// de "vistas reales"/"emisiones", para que la proyección nunca se confunda con un dato real.
+
+/** Granularidades para las que el backend puede calcular una proyección
+ * (ver forecast_service — a nivel día es demasiado ruidoso, a nivel año no
+ * hay sub-puntos que proyectar dentro del propio año). */
+const GRANULARIDADES_CON_FORECAST: Granularidad[] = ["semana", "mes"];
 
 interface VistasLabelProps {
   x?: number | string;
@@ -127,12 +135,32 @@ export function EvolutivoDetalladoChart() {
     useDashboardFilters();
   const [metricaSecundaria, setMetricaSecundaria] = useState<MetricaSecundaria>("emisiones");
   const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [verProyeccion, setVerProyeccion] = useState(false);
+  const forecastDisponible = GRANULARIDADES_CON_FORECAST.includes(granularidad);
+  const incluirForecast = isAdmin && verProyeccion && forecastDisponible;
 
-  const query = useEvolutivo({ ...filters, granularidad, metrica_secundaria: metricaSecundaria });
+  const query = useEvolutivo({
+    ...filters,
+    granularidad,
+    metrica_secundaria: metricaSecundaria,
+    incluir_forecast: incluirForecast,
+  });
 
   const chartData = useMemo(() => {
     const data = query.data ?? [];
-    return data.map((punto) => ({ ...punto, rango: rangoFromPeriodo(punto.periodo, granularidad) }));
+    const primerProyectadoIndex = data.findIndex((punto) => punto.es_proyectado);
+    return data.map((punto, idx) => ({
+      ...punto,
+      rango: punto.es_proyectado ? null : rangoFromPeriodo(punto.periodo, granularidad),
+      vistas_reales: punto.es_proyectado ? undefined : punto.vistas_totales,
+      // El punto real justo antes de la proyección repite su valor acá
+      // para que la línea punteada arranque pegada a la última barra real,
+      // sin un salto visual en el medio.
+      vistas_proyectadas:
+        punto.es_proyectado || idx === primerProyectadoIndex - 1 ? punto.vistas_totales : undefined,
+    }));
   }, [query.data, granularidad]);
 
   // Antes de la primera medición (containerWidth === 0) se asume espacio
@@ -141,6 +169,7 @@ export function EvolutivoDetalladoChart() {
   const formatValue = pxPerBar < COMPACT_LABEL_THRESHOLD_PX ? formatVistasCorto : formatCompactNumber;
 
   const metricaLabel = METRICA_TABS.find((tab) => tab.value === metricaSecundaria)?.label ?? "";
+  const hayProyeccion = chartData.some((punto) => punto.es_proyectado);
 
   function handleBarClick(rangoPunto: { from: string; to: string }) {
     setFechaInicio(rangoPunto.from);
@@ -181,11 +210,31 @@ export function EvolutivoDetalladoChart() {
               </button>
             ))}
           </div>
+
+          {isAdmin && (
+            <div className={TAB_GROUP_CLASS} role="group" aria-label="Proyección de vistas">
+              <button
+                type="button"
+                aria-pressed={verProyeccion}
+                disabled={!forecastDisponible}
+                title={
+                  forecastDisponible
+                    ? "Proyecta vistas hasta fin de año, calculada sobre los datos reales filtrados"
+                    : "Disponible solo con granularidad Semana o Mes"
+                }
+                onClick={() => setVerProyeccion((prev) => !prev)}
+                className={tabButtonClass(verProyeccion, !forecastDisponible ? "opacity-40 cursor-not-allowed" : "")}
+              >
+                Ver proyección
+              </button>
+            </div>
+          )}
         </div>
       }
     >
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
         Haz clic en una barra para filtrar toda la página por ese período.
+        {hayProyeccion && " La línea punteada es una proyección, no un dato real."}
       </p>
 
       <QueryState
@@ -207,11 +256,13 @@ export function EvolutivoDetalladoChart() {
                   la línea contra el piso del gráfico. */}
               <YAxis yAxisId="vistas" hide />
               <YAxis yAxisId="metrica" orientation="right" hide domain={["auto", "auto"]} />
-              <Tooltip formatter={(value: number) => formatCompactNumber(value)} />
+              <Tooltip
+                formatter={(value: number) => (value == null ? "—" : formatCompactNumber(value))}
+              />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar
                 yAxisId="vistas"
-                dataKey="vistas_totales"
+                dataKey="vistas_reales"
                 name="Vistas Totales"
                 fill={BAR_COLOR}
                 fillOpacity={BAR_OPACITY}
@@ -220,12 +271,14 @@ export function EvolutivoDetalladoChart() {
                 cursor="pointer"
               >
                 <LabelList
-                  dataKey="vistas_totales"
+                  dataKey="vistas_reales"
                   content={(props: VistasLabelProps) => <VistasLabel {...props} formatValue={formatValue} />}
                 />
                 {chartData.map((punto) => {
                   const isSelected =
-                    filters.fecha_inicio === punto.rango.from && filters.fecha_fin === punto.rango.to;
+                    !!punto.rango &&
+                    filters.fecha_inicio === punto.rango.from &&
+                    filters.fecha_fin === punto.rango.to;
                   return (
                     <Cell
                       key={punto.periodo}
@@ -233,11 +286,24 @@ export function EvolutivoDetalladoChart() {
                       fillOpacity={BAR_OPACITY}
                       stroke={isSelected ? "#fff" : undefined}
                       strokeWidth={isSelected ? 2 : 0}
-                      onClick={() => handleBarClick(punto.rango)}
+                      onClick={punto.rango ? () => handleBarClick(punto.rango!) : undefined}
                     />
                   );
                 })}
               </Bar>
+              {hayProyeccion && (
+                <Line
+                  yAxisId="vistas"
+                  type="monotone"
+                  dataKey="vistas_proyectadas"
+                  name="Proyección (resto del año)"
+                  stroke={FORECAST_LINE_COLOR}
+                  strokeWidth={2}
+                  strokeDasharray="6 4"
+                  dot={{ r: 3, fill: FORECAST_LINE_COLOR, stroke: FORECAST_LINE_COLOR }}
+                  connectNulls
+                />
+              )}
               <Line
                 yAxisId="metrica"
                 type="monotone"
@@ -251,7 +317,7 @@ export function EvolutivoDetalladoChart() {
                   dataKey="metrica_secundaria"
                   position="top"
                   offset={12}
-                  formatter={(value: number) => formatValue(value)}
+                  formatter={(value: number) => (value == null ? "" : formatValue(value))}
                   className="text-[10px]"
                   fill={LINE_COLOR}
                 />

@@ -24,6 +24,7 @@ from app.schemas.dashboard import (
     SentimientoEvolutivoPoint,
     SentimientoFiltro,
 )
+from app.services import forecast_service
 
 
 async def get_kpis(
@@ -73,11 +74,15 @@ async def get_evolutivo(
     canal: str | None,
     categoria: str | None = None,
     tipo: ProgramType | None = None,
+    incluir_forecast: bool = False,
 ) -> list[EvolutivoPoint]:
     points = await dashboard_repository.get_evolutivo(
         session, filters, granularidad, metrica_secundaria, programa, canal, categoria, tipo
     )
-    return [EvolutivoPoint(**point) for point in points]
+    result = [EvolutivoPoint(**point) for point in points]
+    if incluir_forecast:
+        result = forecast_service.con_proyeccion(result, granularidad)
+    return result
 
 
 async def get_ranking_programas(

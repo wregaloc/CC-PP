@@ -8,7 +8,11 @@ import type {
 } from "@/features/dashboard/types";
 
 export function useEvolutivo(
-  filters: DashboardFilters & { granularidad: Granularidad; metrica_secundaria: MetricaSecundaria },
+  filters: DashboardFilters & {
+    granularidad: Granularidad;
+    metrica_secundaria: MetricaSecundaria;
+    incluir_forecast?: boolean;
+  },
 ) {
   return useQuery({
     queryKey: ["dashboard", "evolutivo", filters],

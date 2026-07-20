@@ -66,7 +66,11 @@ export async function getTopAuspiciadores(limit = 5): Promise<AuspiciadorTopItem
 }
 
 export async function getEvolutivo(
-  filters: DashboardFilters & { granularidad: Granularidad; metrica_secundaria: MetricaSecundaria },
+  filters: DashboardFilters & {
+    granularidad: Granularidad;
+    metrica_secundaria: MetricaSecundaria;
+    incluir_forecast?: boolean;
+  },
 ): Promise<EvolutivoPoint[]> {
   const response = await httpClient.get<EvolutivoPoint[]>("/dashboard/evolutivo", {
     params: filters,

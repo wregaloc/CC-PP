@@ -85,7 +85,16 @@ class EvolutivoPoint(BaseModel):
         "mes=YYYY-MM, anio=YYYY"
     )
     vistas_totales: int
-    metrica_secundaria: int
+    metrica_secundaria: int | None = Field(
+        default=None,
+        description="Null solo en puntos proyectados (es_proyectado=True) — no se proyecta "
+        "la métrica secundaria, solo vistas.",
+    )
+    es_proyectado: bool = Field(
+        default=False,
+        description="True si el punto es una proyección (no un dato real cargado) — solo "
+        "puede venir en True cuando el request pidió incluir_forecast=true siendo Admin.",
+    )
 
 
 class ProgramaRankingItem(BaseModel):

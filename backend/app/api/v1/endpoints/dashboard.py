@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies.auth import require_authenticated
 from app.dependencies.dashboard_filters import DateRangeParams, date_range_params
 from app.dependencies.db import get_db
-from app.models.enums import ProgramType
+from app.models.enums import ProgramType, UserRole
 from app.models.user import User
 from app.schemas.dashboard import (
     AuspiciadorTopItem,
@@ -126,8 +126,10 @@ async def get_auspicios_top(
     response_model=list[EvolutivoPoint],
     summary="Gráfico evolutivo de vistas",
     description="Serie temporal de vistas_totales + una métrica secundaria (emisiones o "
-    "búsquedas), agrupada según la granularidad elegida. Rol requerido: cualquier usuario "
-    "autenticado.",
+    "búsquedas), agrupada según la granularidad elegida. `incluir_forecast` agrega puntos "
+    "proyectados (es_proyectado=true) hasta fin de año cuando la granularidad es semana/mes — "
+    "solo tiene efecto para rol Admin, se ignora silenciosamente para el resto. Rol requerido: "
+    "cualquier usuario autenticado.",
     responses=_AUTH_RESPONSES,
 )
 async def get_evolutivo(
@@ -137,12 +139,18 @@ async def get_evolutivo(
     canal: str | None = Query(default=None, description="Nombre exacto del canal"),
     categoria: str | None = Query(default=None, description="Nombre exacto de la categoría"),
     tipo: ProgramType | None = Query(default=None, description="podcast | programa"),
+    incluir_forecast: bool = Query(
+        default=False,
+        description="Agrega proyección de vistas hasta fin de año. Solo Admin — se ignora "
+        "silenciosamente para otros roles.",
+    ),
     filters: DateRangeParams = Depends(date_range_params),
     user: User = Depends(require_authenticated),
     session: AsyncSession = Depends(get_db),
 ) -> list[EvolutivoPoint]:
+    aplicar_forecast = incluir_forecast and user.role == UserRole.ADMIN
     return await dashboard_service.get_evolutivo(
-        session, filters, granularidad, metrica_secundaria, programa, canal, categoria, tipo
+        session, filters, granularidad, metrica_secundaria, programa, canal, categoria, tipo, aplicar_forecast
     )
 
 
