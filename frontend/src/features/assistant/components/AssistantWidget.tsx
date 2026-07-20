@@ -125,19 +125,19 @@ export function AssistantWidget() {
           type="button"
           onClick={() => setIsOpen(true)}
           aria-label="Abrir el asistente de PodPulse"
-          className="flex items-center gap-2.5 rounded-full py-3 pl-3.5 pr-4 shadow-lg backdrop-blur-xl transition-transform hover:-translate-y-0.5"
+          className="flex items-center gap-2 rounded-full py-2 pl-2.5 pr-3 shadow-lg backdrop-blur-xl transition-transform hover:-translate-y-0.5"
           style={{
             background: "rgba(14, 12, 9, 0.92)",
             border: `1px solid rgba(180, 151, 90, 0.4)`,
             boxShadow: "0 20px 50px rgba(0,0,0,0.5), 0 0 30px rgba(180,151,90,0.14)",
           }}
         >
-          <WaveIcon size={20} />
-          <span className="text-sm font-semibold" style={{ color: IVORY }}>
+          <WaveIcon size={15} />
+          <span className="text-xs font-semibold" style={{ color: IVORY }}>
             Preguntar a PodPulse
           </span>
           <span
-            className="h-1.5 w-1.5 rounded-full"
+            className="h-1 w-1 rounded-full"
             style={{ backgroundColor: GOLD_LIGHT, boxShadow: `0 0 8px ${GOLD_LIGHT}` }}
           />
         </button>
