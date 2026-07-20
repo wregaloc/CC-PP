@@ -10,6 +10,7 @@ from app.exceptions.admin_users import (
     EmailAlreadyExistsError,
     UserNotFoundError,
 )
+from app.exceptions.assistant import AssistantNotConfiguredError, AssistantUpstreamError
 from app.exceptions.auth import (
     AccountInactiveError,
     ClientCannotChangeCredentialsError,
@@ -148,6 +149,22 @@ def register_exception_handlers(app: FastAPI) -> None:
             422,
             "VALIDATION_ERROR",
             "Indicá `programa` o `canal` (exactamente uno) para ver el horario de audiencia",
+        )
+
+    @app.exception_handler(AssistantNotConfiguredError)
+    async def assistant_not_configured_handler(
+        request: Request, exc: AssistantNotConfiguredError
+    ) -> JSONResponse:
+        return _error(
+            503, "ASSISTANT_NOT_CONFIGURED", "El asistente de IA no está configurado todavía"
+        )
+
+    @app.exception_handler(AssistantUpstreamError)
+    async def assistant_upstream_error_handler(
+        request: Request, exc: AssistantUpstreamError
+    ) -> JSONResponse:
+        return _error(
+            503, "ASSISTANT_UNAVAILABLE", "El asistente de IA no pudo responder, intentá de nuevo"
         )
 
     @app.exception_handler(Exception)

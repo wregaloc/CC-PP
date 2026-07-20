@@ -230,6 +230,32 @@ Rol requerido: **admin**.
 
 ---
 
+## 3.7. Asistente de IA (`/api/v1/assistant`) — Módulo IA (extensión del TDD)
+
+Widget flotante de chat en lenguaje natural sobre los datos del dashboard. **No forma parte del TDD v1.0** — es una extensión de alcance aprobada explícitamente por el usuario (ver nota de diseño "Fase 10 amplía el TDD v1.0" para el precedente de este tipo de extensión).
+
+### POST /api/v1/assistant/chat
+
+Rol requerido: **admin** (único rol habilitado por ahora — decisión explícita de alcance, no una limitación técnica).
+
+```json
+// Request
+{ "messages": [{ "role": "user", "content": "¿Qué programa tuvo más vistas?" }] }
+
+// Response 200
+{ "reply": "Hablando Huevadas, con 258.9M de vistas totales.", "tools_used": ["obtener_ranking_programas"] }
+```
+
+**Sin historial en base de datos** (decisión explícita de alcance): el endpoint es *stateless* — el frontend manda el hilo completo de la conversación en cada request (hasta 40 turnos, 4000 caracteres c/u); no hay tabla ni migración nueva para esto.
+
+**Motor**: Google Gemini (`gemini-flash-latest`, tier gratuito — decisión explícita de costo). La API key vive en `GEMINI_API_KEY` (backend, nunca en el frontend).
+
+**Datos reales vía tool-use, nunca SQL directo**: el modelo no tiene acceso a la base — solo puede invocar un set fijo de herramientas (`app/services/assistant_tools.py`) que son envoltorios delgados sobre funciones ya existentes y testeadas de `dashboard_service` (`obtener_kpis`, `obtener_ranking_programas`, `obtener_evolutivo`, `listar_filtros_disponibles`). Así el asistente nunca ve más de lo que ya ve cualquier usuario en el dashboard, y no hay superficie de inyección SQL.
+
+**Errores**: `503 ASSISTANT_NOT_CONFIGURED` si falta `GEMINI_API_KEY`; `503 ASSISTANT_UNAVAILABLE` si Gemini no responde (se reintenta automáticamente ante 429/503 transitorios del proveedor antes de fallar).
+
+---
+
 ## 4. Dashboard (`/api/v1/dashboard`)
 
 Rol requerido en **todos** estos endpoints: **cualquier usuario autenticado** (admin/interno/cliente — TDD §5.1: "todos los roles ven la misma información", sin segmentación de datos por rol). Todas las fórmulas replican las medidas DAX del dashboard Power BI original documentadas en `docs/PODPULSE_Documentacion_Migracion.docx` §4 — ver referencia cruzada en los docstrings de `app/repositories/dashboard_repository.py`.

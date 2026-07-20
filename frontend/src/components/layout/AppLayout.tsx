@@ -5,6 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { visibleNavItems } from "@/components/layout/navItems";
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { AssistantWidget } from "@/features/assistant/components/AssistantWidget";
 
 /** Shell de la app para toda ruta autenticada: Navbar + Sidebar + contenido
  * de la ruta activa (`<Outlet/>`). Las páginas no reimplementan este chrome —
@@ -30,6 +31,9 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Módulo IA (por ahora solo Admin, ver [[podpulse-project-constitution]]) */}
+      {user?.role === "admin" && <AssistantWidget />}
     </div>
   );
 }

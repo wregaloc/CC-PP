@@ -56,6 +56,14 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
+    # Asistente de IA (Módulo IA — solo Admin, ver [[podpulse-project-constitution]]):
+    # consulta datos reales vía tool-use, nunca SQL directo. Vacío por defecto —
+    # el endpoint responde 503 (AssistantNotConfiguredError) si no está seteada,
+    # en vez de fallar al arrancar la app.
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-flash-latest"
+    assistant_max_tool_iterations: int = 5
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins_raw.split(",") if origin.strip()]

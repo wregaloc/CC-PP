@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     admin_clients,
     admin_system,
     admin_users,
+    assistant,
     auth,
     dashboard,
     filters,
@@ -17,5 +18,6 @@ api_router.include_router(uploads.router)
 api_router.include_router(admin_users.router)
 api_router.include_router(admin_clients.router)
 api_router.include_router(admin_system.router)
+api_router.include_router(assistant.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(filters.router)

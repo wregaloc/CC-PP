@@ -1,0 +1,192 @@
+"""Integration tests del asistente de IA — ver [[fastapi-enterprise-backend]].
+
+Se ejercita el flujo completo real (auth, RBAC, DB real vía dashboard_service,
+manejo de excepciones) y se mockea únicamente la llamada de red a Gemini
+(`assistant_service._generate_content`) — es el único borde externo, y
+pegarle de verdad en cada corrida de tests sería lento, costoso contra la
+cuota gratuita, y flaky por depender de la red."""
+
+from collections.abc import Awaitable, Callable
+from datetime import date
+from typing import Any
+
+import httpx
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import Settings, get_settings
+from app.main import app
+from app.models.enums import ProgramType, UserRole
+from app.models.fact_audiencia import FactAudiencia
+from app.models.user import User
+from app.services import assistant_service
+
+pytestmark = pytest.mark.usefixtures("db_session")
+
+CHAT_URL = "/api/v1/assistant/chat"
+
+
+async def _login(client: httpx.AsyncClient, email: str, password: str) -> str:
+    response = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
+    assert response.status_code == 200
+    return response.json()["access_token"]
+
+
+def _auth(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
+async def _make_admin_token(
+    client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]], email: str
+) -> str:
+    await make_user(email=email, password="Valida123", role=UserRole.ADMIN)
+    return await _login(client, email, "Valida123")
+
+
+def _text_response(text: str) -> dict[str, Any]:
+    """Forma de una respuesta final de Gemini (sin functionCall)."""
+    return {"candidates": [{"content": {"role": "model", "parts": [{"text": text}]}}]}
+
+
+def _function_call_response(name: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Forma de una respuesta de Gemini que pide ejecutar una herramienta."""
+    return {
+        "candidates": [
+            {"content": {"role": "model", "parts": [{"functionCall": {"name": name, "args": args}}]}}
+        ]
+    }
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_settings_override():
+    """Limpia cualquier override de `get_settings` que un test haya dejado,
+    para no filtrar estado entre tests."""
+    yield
+    app.dependency_overrides.pop(get_settings, None)
+
+
+async def test_chat_requires_authentication(client: httpx.AsyncClient) -> None:
+    response = await client.post(CHAT_URL, json={"messages": [{"role": "user", "content": "hola"}]})
+
+    assert response.status_code == 401
+
+
+async def test_chat_rejects_non_admin(
+    client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
+) -> None:
+    await make_user(email="interno-assistant@podpulse.pe", password="Valida123", role=UserRole.INTERNO)
+    token = await _login(client, "interno-assistant@podpulse.pe", "Valida123")
+
+    response = await client.post(
+        CHAT_URL, json={"messages": [{"role": "user", "content": "hola"}]}, headers=_auth(token)
+    )
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "INSUFFICIENT_ROLE"
+
+
+async def test_chat_returns_503_when_not_configured(
+    client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
+) -> None:
+    token = await _make_admin_token(client, make_user, "admin-noconfig@podpulse.pe")
+    app.dependency_overrides[get_settings] = lambda: Settings(gemini_api_key="")  # type: ignore[call-arg]
+
+    response = await client.post(
+        CHAT_URL, json={"messages": [{"role": "user", "content": "hola"}]}, headers=_auth(token)
+    )
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "ASSISTANT_NOT_CONFIGURED"
+
+
+async def test_chat_admin_receives_text_reply_without_tools(
+    client: httpx.AsyncClient,
+    make_user: Callable[..., Awaitable[User]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token = await _make_admin_token(client, make_user, "admin-textreply@podpulse.pe")
+
+    async def fake_generate_content(client_, model, api_key, payload):
+        return _text_response("¡Hola! Soy el asistente de PodPulse.")
+
+    monkeypatch.setattr(assistant_service, "_generate_content", fake_generate_content)
+
+    response = await client.post(
+        CHAT_URL,
+        json={"messages": [{"role": "user", "content": "hola"}]},
+        headers=_auth(token),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["reply"] == "¡Hola! Soy el asistente de PodPulse."
+    assert body["tools_used"] == []
+
+
+async def test_chat_admin_tool_call_reads_real_data(
+    client: httpx.AsyncClient,
+    make_user: Callable[..., Awaitable[User]],
+    make_programa,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """El modelo pide `obtener_kpis`; el backend lo ejecuta contra datos reales
+    sembrados en la base (no un mock del dato), y le devuelve el resultado al
+    modelo, que responde en base a eso — verifica el loop de tool-use completo."""
+    token = await _make_admin_token(client, make_user, "admin-tooluse@podpulse.pe")
+
+    programa = await make_programa("TEST_ASISTENTE", "Canal Asistente", tipo=ProgramType.PODCAST)
+    db_session.add(
+        FactAudiencia(
+            fecha=date(2030, 3, 1), mes_num=3, anio=2030, semana_num=9,
+            programa_id=programa.id, es_emision=1, vistas_diarias=777,
+            busquedas_diarias=0, likes=0, comentarios=0,
+        )
+    )
+    await db_session.flush()
+
+    calls: list[dict[str, Any]] = []
+
+    async def fake_generate_content(client_, model, api_key, payload):
+        calls.append(payload)
+        if len(calls) == 1:
+            return _function_call_response("obtener_kpis", {"programa": "TEST_ASISTENTE"})
+        return _text_response("El programa TEST_ASISTENTE tiene 777 vistas totales.")
+
+    monkeypatch.setattr(assistant_service, "_generate_content", fake_generate_content)
+
+    response = await client.post(
+        CHAT_URL,
+        json={"messages": [{"role": "user", "content": "¿Cuántas vistas tiene TEST_ASISTENTE?"}]},
+        headers=_auth(token),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tools_used"] == ["obtener_kpis"]
+    assert "777" in body["reply"]
+    # El segundo request a Gemini debe llevar el resultado real de la tool.
+    assert len(calls) == 2
+    second_call_contents = calls[1]["contents"]
+    tool_result_part = second_call_contents[-1]["parts"][0]["functionResponse"]
+    assert tool_result_part["response"]["vistas_totales"] == 777
+
+
+async def test_chat_upstream_error_returns_503(
+    client: httpx.AsyncClient,
+    make_user: Callable[..., Awaitable[User]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token = await _make_admin_token(client, make_user, "admin-upstream@podpulse.pe")
+
+    async def fake_generate_content(client_, model, api_key, payload):
+        return {"candidates": []}
+
+    monkeypatch.setattr(assistant_service, "_generate_content", fake_generate_content)
+
+    response = await client.post(
+        CHAT_URL, json={"messages": [{"role": "user", "content": "hola"}]}, headers=_auth(token)
+    )
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "ASSISTANT_UNAVAILABLE"
