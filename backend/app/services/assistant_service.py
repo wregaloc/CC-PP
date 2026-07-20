@@ -15,6 +15,7 @@ loguea: va en el header `x-goog-api-key` (ver [[enterprise-security]])."""
 
 import asyncio
 import logging
+from collections.abc import Callable
 from datetime import date
 from typing import Any
 
@@ -30,14 +31,19 @@ logger = logging.getLogger(__name__)
 
 _GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 _REQUEST_TIMEOUT_SECONDS = 60.0
-# 429/503 de Gemini son transitorios (cuota del tier gratis, sobrecarga del
-# modelo) — confirmado en la práctica: "This model is currently experiencing
-# high demand" desaparece con un reintento a los pocos segundos. Otros
-# códigos (400, 403) son errores de la request en sí; reintentarlos no
-# cambia el resultado, así que no entran en este retry.
+# 429/503 de Gemini son transitorios — confirmado en la práctica con dos
+# causas distintas: sobrecarga momentánea del modelo (503, "high demand",
+# se resuelve en pocos segundos) y cuota de requests/minuto del tier
+# gratuito agotada (429 RESOURCE_EXHAUSTED, ventana de ~30s — el tier
+# gratis de gemini-flash-latest permite 20 req/min). Otros códigos (400,
+# 403) son errores de la request en sí; reintentarlos no cambia el
+# resultado, así que no entran en este retry.
 _RETRYABLE_STATUS_CODES = {429, 503}
 _MAX_RETRIES = 2
-_RETRY_BACKOFF_SECONDS = 2.0
+_DEFAULT_RETRY_BACKOFF_SECONDS = 2.0
+# Tope de espera aunque Gemini pida más (vía RetryInfo.retryDelay) — evita
+# que una sola respuesta del asistente demore minutos enteros.
+_MAX_RETRY_BACKOFF_SECONDS = 30.0
 
 
 def _system_instruction() -> str:
@@ -72,12 +78,30 @@ def _to_gemini_contents(messages: list[ChatMessage]) -> list[dict[str, Any]]:
     ]
 
 
+def _retry_delay_seconds(response: httpx.Response) -> float:
+    """Google manda el tiempo de espera real en `error.details[]` (tipo
+    `google.rpc.RetryInfo`, campo `retryDelay` = "28s") cuando el 429 es por
+    cuota agotada — un backoff fijo corto (2s) no alcanza para una ventana de
+    cuota de ~30s, así que se usa el valor real cuando está disponible."""
+    try:
+        details = response.json().get("error", {}).get("details", [])
+        for detail in details:
+            if detail.get("@type", "").endswith("RetryInfo"):
+                raw = detail.get("retryDelay", "")
+                if raw.endswith("s"):
+                    return min(float(raw[:-1]), _MAX_RETRY_BACKOFF_SECONDS)
+    except (ValueError, KeyError):
+        pass
+    return _DEFAULT_RETRY_BACKOFF_SECONDS
+
+
 async def _generate_content(
     client: httpx.AsyncClient, model: str, api_key: str, payload: dict[str, Any]
 ) -> dict[str, Any]:
-    """Una llamada a generateContent, con reintento corto ante 429/503
-    transitorios de Gemini (ver `_RETRYABLE_STATUS_CODES`). Aislada para
-    poder mockearla en tests sin tocar la red."""
+    """Una llamada a generateContent, con reintento ante 429/503 transitorios
+    de Gemini (ver `_RETRYABLE_STATUS_CODES`), respetando el `retryDelay` real
+    que manda Google cuando lo incluye. Aislada para poder mockearla en tests
+    sin tocar la red."""
     last_response: httpx.Response | None = None
     for attempt in range(_MAX_RETRIES + 1):
         response = await client.post(
@@ -90,11 +114,12 @@ async def _generate_content(
         last_response = response
         if response.status_code not in _RETRYABLE_STATUS_CODES or attempt == _MAX_RETRIES:
             break
+        delay = _retry_delay_seconds(response)
         logger.warning(
-            "Gemini respondió %s (intento %s/%s), reintentando...",
-            response.status_code, attempt + 1, _MAX_RETRIES,
+            "Gemini respondió %s (intento %s/%s), reintentando en %.1fs...",
+            response.status_code, attempt + 1, _MAX_RETRIES, delay,
         )
-        await asyncio.sleep(_RETRY_BACKOFF_SECONDS)
+        await asyncio.sleep(delay)
 
     # No se filtra el cuerpo crudo del proveedor al cliente; se loguea para
     # diagnóstico y se traduce a un 503 genérico en el handler.
@@ -111,12 +136,21 @@ def _extract_parts(data: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 async def chat(
-    session: AsyncSession, messages: list[ChatMessage], settings: Settings
+    session_factory: Callable[[], AsyncSession], messages: list[ChatMessage], settings: Settings
 ) -> AssistantChatResponse:
     """Procesa una conversación y devuelve la respuesta del asistente.
 
     Lanza AssistantNotConfiguredError si falta la API key (503), o
-    AssistantUpstreamError ante fallos del proveedor (503) — fail closed."""
+    AssistantUpstreamError ante fallos del proveedor (503) — fail closed.
+
+    Recibe una *factory* de sesiones (no una sesión ya abierta): una
+    conversación puede implicar varios round-trips a Gemini (segundos de
+    espera de red), y si se mantuviera una única sesión abierta durante todo
+    ese tiempo, retendría una conexión del pool de la app innecesariamente.
+    En cambio, se abre una sesión nueva y se cierra de inmediato solo para el
+    instante puntual de cada llamada a herramienta (ver el `async with` más
+    abajo) — así el pool queda libre para el resto de la app mientras el
+    asistente espera al modelo."""
     if not settings.gemini_api_key:
         raise AssistantNotConfiguredError
 
@@ -152,7 +186,8 @@ async def chat(
                 name = call.get("name", "")
                 args = call.get("args") or {}
                 tools_used.append(name)
-                result = await assistant_tools.execute_tool(session, name, args)
+                async with session_factory() as session:
+                    result = await assistant_tools.execute_tool(session, name, args)
                 tool_response_parts.append(
                     {"functionResponse": {"name": name, "response": result}}
                 )

@@ -7,7 +7,7 @@ pegarle de verdad en cada corrida de tests sería lento, costoso contra la
 cuota gratuita, y flaky por depender de la red."""
 
 from collections.abc import Awaitable, Callable
-from datetime import date
+from datetime import date, time
 from typing import Any
 
 import httpx
@@ -19,7 +19,7 @@ from app.main import app
 from app.models.enums import ProgramType, UserRole
 from app.models.fact_audiencia import FactAudiencia
 from app.models.user import User
-from app.services import assistant_service
+from app.services import assistant_service, assistant_tools
 
 pytestmark = pytest.mark.usefixtures("db_session")
 
@@ -190,3 +190,73 @@ async def test_chat_upstream_error_returns_503(
 
     assert response.status_code == 503
     assert response.json()["code"] == "ASSISTANT_UNAVAILABLE"
+
+
+async def test_obtener_horario_audiencia_programa_suma_por_dia_y_hora(
+    db_session: AsyncSession, make_programa
+) -> None:
+    """Modo programa: dos filas en el mismo (día de semana, hora) suman sus
+    vistas — replica construirGrillaHeatmap del frontend, no un simple max."""
+    programa = await make_programa("TEST_HORARIO_A", "Canal Horario Test 1", tipo=ProgramType.PODCAST)
+    # 2030-01-07 y 2030-01-14 caen en el mismo día de semana (7 días de diferencia).
+    db_session.add_all(
+        [
+            FactAudiencia(
+                fecha=date(2030, 1, 7), mes_num=1, anio=2030, semana_num=2,
+                programa_id=programa.id, es_emision=1, vistas_diarias=100,
+                hora_transmision=time(9, 0),
+            ),
+            FactAudiencia(
+                fecha=date(2030, 1, 14), mes_num=1, anio=2030, semana_num=3,
+                programa_id=programa.id, es_emision=1, vistas_diarias=150,
+                hora_transmision=time(9, 30),
+            ),
+            FactAudiencia(
+                fecha=date(2030, 1, 21), mes_num=1, anio=2030, semana_num=4,
+                programa_id=programa.id, es_emision=1, vistas_diarias=50,
+                hora_transmision=time(14, 0),
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    result = await assistant_tools.execute_tool(
+        db_session, "obtener_horario_audiencia", {"programa": "TEST_HORARIO_A"}
+    )
+
+    assert result["bloque_max"]["dia_semana"] == assistant_tools._DIAS_SEMANA[date(2030, 1, 7).weekday()]
+    assert result["bloque_max"]["hora"] == 9
+    assert result["bloque_max"]["vistas"] == 250
+    assert "programa_lider" not in result["bloque_max"]
+
+
+async def test_obtener_horario_audiencia_canal_toma_maximo_y_atribuye_programa(
+    db_session: AsyncSession, make_programa
+) -> None:
+    """Modo canal: el bloque no suma entre programas — se queda con la fila
+    de mayor vistas_diarias y reporta qué programa la generó."""
+    programa_a = await make_programa("TEST_HORARIO_CANAL_A", "Canal Horario Test 2", tipo=ProgramType.PODCAST)
+    programa_b = await make_programa("TEST_HORARIO_CANAL_B", "Canal Horario Test 2", tipo=ProgramType.PODCAST)
+    db_session.add_all(
+        [
+            FactAudiencia(
+                fecha=date(2030, 2, 4), mes_num=2, anio=2030, semana_num=6,
+                programa_id=programa_a.id, es_emision=1, vistas_diarias=80,
+                hora_transmision=time(10, 0),
+            ),
+            FactAudiencia(
+                fecha=date(2030, 2, 11), mes_num=2, anio=2030, semana_num=7,
+                programa_id=programa_b.id, es_emision=1, vistas_diarias=200,
+                hora_transmision=time(10, 15),
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    result = await assistant_tools.execute_tool(
+        db_session, "obtener_horario_audiencia", {"canal": "Canal Horario Test 2"}
+    )
+
+    assert result["bloque_max"]["hora"] == 10
+    assert result["bloque_max"]["vistas"] == 200
+    assert result["bloque_max"]["programa_lider"] == "TEST_HORARIO_CANAL_B"

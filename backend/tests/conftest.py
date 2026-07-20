@@ -21,7 +21,7 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-only-secret-not-for-production")
 
 from app.core.security import hash_password  # noqa: E402
 from app.db.session import engine  # noqa: E402
-from app.dependencies.db import get_db  # noqa: E402
+from app.dependencies.db import get_db, get_session_factory  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.enums import UserRole  # noqa: E402
 from app.models.user import User  # noqa: E402
@@ -52,11 +52,24 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
             bind=connection, join_transaction_mode="create_savepoint", expire_on_commit=False
         )
 
+        def _isolated_session_factory() -> AsyncSession:
+            # Nueva sesión por llamada (mismo patrón que get_session_factory en
+            # producción, ver app/dependencies/db.py), pero bindeada a la misma
+            # `connection`/SAVEPOINT del test — así los datos sembrados en este
+            # test siguen siendo visibles para endpoints que abren/cierran
+            # sesiones cortas en vez de retener una del pool (p. ej. el
+            # asistente de IA).
+            return AsyncSession(
+                bind=connection, join_transaction_mode="create_savepoint", expire_on_commit=False
+            )
+
         app.dependency_overrides[get_db] = lambda: session
+        app.dependency_overrides[get_session_factory] = lambda: _isolated_session_factory
         try:
             yield session
         finally:
             app.dependency_overrides.pop(get_db, None)
+            app.dependency_overrides.pop(get_session_factory, None)
             await outer_transaction.rollback()
 
 

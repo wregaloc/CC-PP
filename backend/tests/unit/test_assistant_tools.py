@@ -71,3 +71,47 @@ async def test_execute_tool_surfaces_argument_errors_without_raising() -> None:
     )
 
     assert "error" in result
+
+
+async def test_execute_tool_auspicios_programa_requires_programa() -> None:
+    result = await execute_tool(session=None, name="obtener_auspicios_programa", args={})  # type: ignore[arg-type]
+
+    assert "error" in result
+
+
+async def test_execute_tool_auspicios_programa_rejects_invalid_mes() -> None:
+    result = await execute_tool(
+        session=None, name="obtener_auspicios_programa", args={"programa": "X", "mes": 13}
+    )  # type: ignore[arg-type]
+
+    assert "error" in result
+
+
+async def test_execute_tool_buscar_auspiciador_requires_min_length() -> None:
+    result = await execute_tool(session=None, name="buscar_programas_por_auspiciador", args={"marca": "a"})  # type: ignore[arg-type]
+
+    assert "error" in result
+
+
+async def test_execute_tool_keywords_rejects_invalid_sentimiento() -> None:
+    result = await execute_tool(
+        session=None, name="obtener_keywords", args={"sentimiento": "furioso"}
+    )  # type: ignore[arg-type]
+
+    assert "error" in result
+
+
+async def test_execute_tool_keywords_rejects_invalid_meses() -> None:
+    result = await execute_tool(session=None, name="obtener_keywords", args={"meses": [13]})  # type: ignore[arg-type]
+
+    assert "error" in result
+
+
+async def test_execute_tool_horario_audiencia_requires_exactly_one_of_programa_canal() -> None:
+    sin_ninguno = await execute_tool(session=None, name="obtener_horario_audiencia", args={})  # type: ignore[arg-type]
+    con_ambos = await execute_tool(
+        session=None, name="obtener_horario_audiencia", args={"programa": "X", "canal": "Y"}
+    )  # type: ignore[arg-type]
+
+    assert "error" in sin_ninguno
+    assert "error" in con_ambos

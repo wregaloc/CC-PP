@@ -20,8 +20,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies.dashboard_filters import DateRangeParams
 from app.models.enums import ProgramType
-from app.schemas.dashboard import Granularidad, MetricaSecundaria
+from app.schemas.dashboard import Granularidad, MetricaSecundaria, SentimientoFiltro
 from app.services import dashboard_service
+
+# Mismo orden que DIAS_SEMANA en frontend/src/features/dashboard/lib/horarioAudiencia.ts
+# — índice 0 = Lunes, coincide con date.weekday() de Python (Monday=0).
+_DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 
 class ToolArgumentError(ValueError):
@@ -132,11 +136,132 @@ async def _obtener_evolutivo(session: AsyncSession, args: dict[str, Any]) -> dic
     return {"serie": [point.model_dump(mode="json") for point in points]}
 
 
+async def _obtener_sentimiento(session: AsyncSession, args: dict[str, Any]) -> dict[str, Any]:
+    filters = _date_range(args)
+    result = await dashboard_service.get_sentiment_kpis(session, filters, args.get("programa") or None)
+    return result.model_dump(mode="json")
+
+
+async def _obtener_keywords(session: AsyncSession, args: dict[str, Any]) -> dict[str, Any]:
+    meses_raw = args.get("meses") or None
+    meses: list[int] | None = None
+    if meses_raw is not None:
+        try:
+            meses = [int(m) for m in meses_raw]
+        except (TypeError, ValueError) as exc:
+            raise ToolArgumentError("meses debe ser una lista de números 1-12") from exc
+        if any(m < 1 or m > 12 for m in meses):
+            raise ToolArgumentError("cada mes debe estar entre 1 y 12")
+
+    sentimiento_raw = args.get("sentimiento") or "todos"
+    try:
+        sentimiento = SentimientoFiltro(sentimiento_raw)
+    except ValueError as exc:
+        raise ToolArgumentError("sentimiento debe ser positivo|negativo|neutral|todos") from exc
+
+    limit = max(1, min(int(args.get("limit") or 30), 500))
+    items = await dashboard_service.get_keywords(
+        session, args.get("programa") or None, meses, sentimiento, limit
+    )
+    return {"keywords": [item.model_dump(mode="json") for item in items]}
+
+
+async def _obtener_auspicios_programa(session: AsyncSession, args: dict[str, Any]) -> dict[str, Any]:
+    programa = args.get("programa") or None
+    if not programa:
+        raise ToolArgumentError("programa es obligatorio para esta herramienta")
+    mes = args.get("mes")
+    mes_int = None
+    if mes is not None:
+        try:
+            mes_int = int(mes)
+        except (TypeError, ValueError) as exc:
+            raise ToolArgumentError("mes debe ser un número 1-12") from exc
+        if mes_int < 1 or mes_int > 12:
+            raise ToolArgumentError("mes debe estar entre 1 y 12")
+    items = await dashboard_service.get_auspicios(session, programa, mes_int)
+    return {"auspicios": [item.model_dump(mode="json") for item in items]}
+
+
+async def _buscar_programas_por_auspiciador(session: AsyncSession, args: dict[str, Any]) -> dict[str, Any]:
+    q = args.get("marca") or ""
+    if len(q) < 2:
+        raise ToolArgumentError("marca debe tener al menos 2 caracteres")
+    items = await dashboard_service.get_auspicios_por_marca(session, q)
+    return {"resultados": [item.model_dump(mode="json") for item in items]}
+
+
+async def _obtener_top_auspiciadores(session: AsyncSession, args: dict[str, Any]) -> dict[str, Any]:
+    limit = max(1, min(int(args.get("limit") or 5), 50))
+    items = await dashboard_service.get_top_auspiciadores(session, limit)
+    return {"top_auspiciadores": [item.model_dump(mode="json") for item in items]}
+
+
+async def _obtener_horario_audiencia(session: AsyncSession, args: dict[str, Any]) -> dict[str, Any]:
+    """Replica exactamente la agregación del panel "Horario de Mayor
+    Audiencia" (ver frontend/src/features/dashboard/lib/horarioAudiencia.ts
+    ::construirGrillaHeatmap/construirGrillaHeatmapCanal + encontrarBloqueMax)
+    para que el asistente nunca dé una respuesta distinta a la que el usuario
+    vería si abriera ese panel él mismo.
+
+    Modo programa: suma vistas por (día de semana, hora) y devuelve el
+    bloque con más vistas acumuladas. Modo canal: por cada (día, hora) se
+    queda con la fila de mayor `vistas_diarias` (no una suma — un video
+    puntual, no un acumulado), para poder atribuir qué programa lideró ese
+    bloque."""
+    filters = _date_range(args)
+    programa = args.get("programa") or None
+    canal = args.get("canal") or None
+    if (programa is None) == (canal is None):
+        raise ToolArgumentError(
+            "Indicá exactamente uno de 'programa' o 'canal' (no ambos, no ninguno)"
+        )
+    tipo = _parse_tipo(args.get("tipo"))
+    rows = await dashboard_service.get_horario_audiencia(session, filters, programa, canal, tipo)
+
+    if programa:
+        totales: dict[tuple[int, int], int] = {}
+        for row in rows:
+            if row.hora_transmision is None:
+                continue
+            clave = (row.fecha.weekday(), row.hora_transmision.hour)
+            totales[clave] = totales.get(clave, 0) + row.vistas_diarias
+        if not totales:
+            return {"bloque_max": None, "nota": "No hay filas con hora de transmisión registrada."}
+        (dia, hora), vistas = max(totales.items(), key=lambda kv: kv[1])
+        return {"bloque_max": {"dia_semana": _DIAS_SEMANA[dia], "hora": hora, "vistas": vistas}}
+
+    mejor: dict[tuple[int, int], tuple[int, str]] = {}
+    for row in rows:
+        if row.hora_transmision is None:
+            continue
+        clave = (row.fecha.weekday(), row.hora_transmision.hour)
+        if clave not in mejor or row.vistas_diarias > mejor[clave][0]:
+            mejor[clave] = (row.vistas_diarias, row.programa)
+    if not mejor:
+        return {"bloque_max": None, "nota": "No hay filas con hora de transmisión registrada."}
+    (dia, hora), (vistas, programa_lider) = max(mejor.items(), key=lambda kv: kv[1][0])
+    return {
+        "bloque_max": {
+            "dia_semana": _DIAS_SEMANA[dia],
+            "hora": hora,
+            "vistas": vistas,
+            "programa_lider": programa_lider,
+        }
+    }
+
+
 _HANDLERS = {
     "listar_filtros_disponibles": _listar_filtros_disponibles,
     "obtener_kpis": _obtener_kpis,
     "obtener_ranking_programas": _obtener_ranking_programas,
     "obtener_evolutivo": _obtener_evolutivo,
+    "obtener_sentimiento": _obtener_sentimiento,
+    "obtener_keywords": _obtener_keywords,
+    "obtener_auspicios_programa": _obtener_auspicios_programa,
+    "buscar_programas_por_auspiciador": _buscar_programas_por_auspiciador,
+    "obtener_top_auspiciadores": _obtener_top_auspiciadores,
+    "obtener_horario_audiencia": _obtener_horario_audiencia,
 }
 
 
@@ -232,6 +357,95 @@ TOOL_DECLARATIONS: list[dict[str, Any]] = [
                 **_FECHA_PROPS,
             },
             "required": ["granularidad", "metrica_secundaria"],
+        },
+    },
+    {
+        "name": "obtener_sentimiento",
+        "description": "Porcentaje de audiencia con sentimiento positivo/negativo/neutral en el "
+        "período/filtro (0-1, ej. 0.335 = 33.5%). Para '¿cómo viene el sentimiento/opinión de la "
+        "audiencia?'.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "programa": {"type": "string", "description": "Nombre exacto del programa (opcional)"},
+                **_FECHA_PROPS,
+            },
+        },
+    },
+    {
+        "name": "obtener_keywords",
+        "description": "Hashtags/keywords más frecuentes, ordenados por cantidad de menciones. "
+        "Para '¿de qué habla la audiencia de X?' o '¿cuáles son los temas más comentados?'.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "programa": {"type": "string", "description": "Nombre exacto del programa (opcional)"},
+                "meses": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "Uno o más meses (1-12) a incluir (opcional, todos si se omite)",
+                },
+                "sentimiento": {
+                    "type": "string",
+                    "enum": ["positivo", "negativo", "neutral", "todos"],
+                    "description": "Filtrar por sentimiento del keyword (default todos)",
+                },
+                "limit": {"type": "integer", "description": "Cantidad a devolver (1-500, default 30)"},
+            },
+        },
+    },
+    {
+        "name": "obtener_auspicios_programa",
+        "description": "Marcas auspiciadoras (sponsors) de un programa específico, opcionalmente "
+        "acotado a un mes. Requiere 'programa'.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "programa": {"type": "string", "description": "Nombre exacto del programa (obligatorio)"},
+                "mes": {"type": "integer", "description": "Mes numérico 1-12 (opcional)"},
+            },
+            "required": ["programa"],
+        },
+    },
+    {
+        "name": "buscar_programas_por_auspiciador",
+        "description": "Dado el nombre (parcial) de una marca/auspiciador (ej. 'BCP'), devuelve en "
+        "qué programas y canales aparece auspiciando. Para '¿en qué programas auspicia X marca?'.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "marca": {"type": "string", "description": "Texto a buscar en el nombre del auspiciador (mín. 2 letras)"},
+            },
+            "required": ["marca"],
+        },
+    },
+    {
+        "name": "obtener_top_auspiciadores",
+        "description": "Ranking global de auspiciadores por cantidad de programas distintos en los "
+        "que aparecen (sobre todo el histórico, sin filtrar por fecha). Para '¿quiénes son los "
+        "principales auspiciadores?'.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "description": "Cantidad a devolver (1-50, default 5)"},
+            },
+        },
+    },
+    {
+        "name": "obtener_horario_audiencia",
+        "description": "Encuentra el bloque de día de semana + hora con más audiencia — el mismo "
+        "cálculo que muestra el panel 'Horario de Mayor Audiencia' del dashboard. Para '¿cuál es el "
+        "mejor horario para publicar/transmitir?'. Requiere EXACTAMENTE uno de 'programa' o 'canal' "
+        "(no ambos, no ninguno); con 'canal' el resultado indica además qué programa lideró ese "
+        "bloque, ya que mezcla las filas de todos los programas del canal.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "programa": {"type": "string", "description": "Nombre exacto del programa (usar esto O canal)"},
+                "canal": {"type": "string", "description": "Nombre exacto del canal (usar esto O programa)"},
+                **_TIPO_PROP,
+                **_FECHA_PROPS,
+            },
         },
     },
 ]
