@@ -221,6 +221,26 @@ async def test_upload_logo_rejects_non_image_content(
     assert response.json()["code"] == "VALIDATION_ERROR"
 
 
+async def test_create_client_with_empty_name_returns_readable_error(
+    client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
+) -> None:
+    """Este 422 lo dispara Pydantic (min_length=1) ANTES de que corra
+    client_service — nunca pasa por los exception handlers de dominio, así
+    que ejercita el handler global de RequestValidationError. Confirmado en
+    vivo que sin ese handler el frontend mostraba "[object Object]" (detail
+    venía como lista de objetos, no como string) — ver
+    app/exceptions/handlers.py::request_validation_error_handler."""
+    token = await _make_admin_token(client, make_user, "admin-clients-emptyname@podpulse.pe")
+
+    response = await client.post(CLIENTS_URL, headers=_auth(token), json={"name": ""})
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["code"] == "VALIDATION_ERROR"
+    assert isinstance(body["detail"], str)
+    assert "name" in body["detail"]
+
+
 async def test_list_client_users_returns_assigned_users(
     client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
 ) -> None:

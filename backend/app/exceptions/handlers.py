@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.core.security import InvalidTokenError, TokenExpiredError
@@ -166,6 +167,26 @@ def register_exception_handlers(app: FastAPI) -> None:
         return _error(
             503, "ASSISTANT_UNAVAILABLE", "El asistente de IA no pudo responder, intentá de nuevo"
         )
+
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_error_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        """FastAPI/Pydantic validan la request ANTES de que el código propio
+        corra, así que estos errores nunca pasan por `_error()` — su forma
+        default (`detail` como lista de objetos, no un string) rompía el
+        contrato `{detail, code}` que el resto de la API respeta, y el
+        frontend terminaba mostrando "[object Object]" (confirmado en vivo
+        probando el formulario de Clientes con el nombre vacío)."""
+        errores = exc.errors()
+        primero = errores[0] if errores else None
+        if primero is None:
+            detalle = "Datos inválidos"
+        else:
+            # loc[0] es "body"/"query"/"path" — se omite, no aporta al usuario.
+            campo = ".".join(str(parte) for parte in primero["loc"][1:])
+            detalle = f"{campo}: {primero['msg']}" if campo else str(primero["msg"])
+        return _error(422, "VALIDATION_ERROR", detalle)
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:

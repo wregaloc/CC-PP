@@ -30,8 +30,6 @@ interface KpiCardProps {
 // exacto (no hay canvas.measureText en este componente), pero alcanza para
 // decidir "entra vs. no entra" sin medir cada carácter real.
 const PX_PER_CHAR_ESTIMATE = 11;
-// px-4 del contenedor (16px por lado).
-const CARD_PADDING_PX = 32;
 
 /** Colores de acento opcionales — convención estándar de sentimiento
  * (verde=positivo, rojo=negativo, gris=neutral). Solo lo usan los KPIs de
@@ -64,12 +62,14 @@ export function KpiCard({
   helperText,
 }: KpiCardProps) {
   const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>();
-  const availableWidth = containerWidth - CARD_PADDING_PX;
+  // `containerWidth` viene del contentRect del propio div con `px-4` — el
+  // ResizeObserver ya excluye ese padding, así que es directamente el ancho
+  // disponible para el texto (restarlo de nuevo abreviaba de más).
   // Antes de la primera medición (containerWidth === 0) se muestra el valor
   // completo, mismo criterio que el resto de charts con esta técnica — no
   // abreviar de más en el primer render.
   const necesitaAbreviar =
-    !!compactValue && containerWidth > 0 && value.length * PX_PER_CHAR_ESTIMATE > availableWidth;
+    !!compactValue && containerWidth > 0 && value.length * PX_PER_CHAR_ESTIMATE > containerWidth;
   const displayValue = necesitaAbreviar ? compactValue : value;
 
   return (
