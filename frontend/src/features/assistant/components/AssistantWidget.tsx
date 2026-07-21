@@ -125,7 +125,7 @@ export function AssistantWidget() {
           type="button"
           onClick={() => setIsOpen(true)}
           aria-label="Abrir el asistente de PodPulse"
-          className="flex items-center gap-2 rounded-full py-2 pl-2.5 pr-3 shadow-lg backdrop-blur-xl transition-transform hover:-translate-y-0.5"
+          className="flex items-center gap-2 rounded-full p-2.5 shadow-lg backdrop-blur-xl transition-transform hover:-translate-y-0.5 sm:py-2 sm:pl-2.5 sm:pr-3"
           style={{
             background: "rgba(14, 12, 9, 0.92)",
             border: `1px solid rgba(180, 151, 90, 0.4)`,
@@ -133,11 +133,15 @@ export function AssistantWidget() {
           }}
         >
           <WaveIcon size={15} />
-          <span className="text-xs font-semibold" style={{ color: IVORY }}>
+          {/* Colapsado a solo el ícono en mobile — el pill con texto tapaba
+              contenido del dashboard al hacer scroll en pantallas angostas
+              (confirmado visualmente); aria-label arriba mantiene el
+              nombre accesible aunque el texto esté oculto. */}
+          <span className="hidden text-xs font-semibold sm:inline" style={{ color: IVORY }}>
             Preguntar a PodPulse
           </span>
           <span
-            className="h-1 w-1 rounded-full"
+            className="hidden h-1 w-1 rounded-full sm:inline-block"
             style={{ backgroundColor: GOLD_LIGHT, boxShadow: `0 0 8px ${GOLD_LIGHT}` }}
           />
         </button>

@@ -73,6 +73,15 @@ interface VistasLabelProps {
  * con la barra vecina o con la etiqueta de la línea de Emisiones. */
 const COMPACT_LABEL_THRESHOLD_PX = 70;
 
+/** Por debajo de esto, ni abreviado el número entra sin pisar al vecino —
+ * se oculta la etiqueta en vez de mostrarla ilegible. */
+const LABEL_HIDDEN_THRESHOLD_PX = 22;
+
+/** Ancho de contenedor por debajo del cual los márgenes fijos de 48px (que
+ * solo existen por las etiquetas, ya que los ejes Y están ocultos) se
+ * reducen — le devuelve ese espacio a las barras en mobile. */
+const NARROW_CONTAINER_PX = 480;
+
 /** Label del valor de "Vistas Totales" sobre cada barra, renderizado a mano
  * en vez de usar `position="insideTop"` de LabelList: cuando solo hay una
  * barra (rango filtrado a un único mes/semana/día), Recharts le pasa a esa
@@ -192,6 +201,19 @@ export function EvolutivoDetalladoChart() {
   // completo, para no mostrar un flash abreviado en el primer render.
   const pxPerBar = containerWidth > 0 ? containerWidth / Math.max(chartData.length, 1) : Infinity;
   const formatValue = pxPerBar < COMPACT_LABEL_THRESHOLD_PX ? formatVistasCorto : formatCompactNumber;
+  // Por debajo de esto ni el número abreviado entra sin superponerse con el
+  // de la barra vecina (visto en mobile con muchos meses sin filtrar) — se
+  // prefiere no mostrar la etiqueta a mostrarla ilegible; el dato sigue
+  // disponible al tocar/pasar el mouse por la barra (Tooltip).
+  const mostrarEtiquetas = pxPerBar >= LABEL_HIDDEN_THRESHOLD_PX;
+  // Los ejes Y están ocultos, así que el margen fijo de 48px a cada lado
+  // solo existía para que las etiquetas de valor no se cortaran — en un
+  // chart angosto (mobile) ese margen le saca espacio a las barras que más
+  // falta les hace.
+  const chartMargin =
+    containerWidth > 0 && containerWidth < NARROW_CONTAINER_PX
+      ? { top: 24, right: 8, left: 8, bottom: 0 }
+      : { top: 24, right: 48, left: 48, bottom: 0 };
 
   const metricaLabel = METRICA_TABS.find((tab) => tab.value === metricaSecundaria)?.label ?? "";
   const hayProyeccion = chartData.some((punto) => punto.es_proyectado);
@@ -273,9 +295,9 @@ export function EvolutivoDetalladoChart() {
       >
         <div ref={containerRef} className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 24, right: 48, left: 48, bottom: 0 }}>
+            <ComposedChart data={chartData} margin={chartMargin}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-200 dark:stroke-neutral-800" />
-              <XAxis dataKey="periodo" tick={{ fontSize: 12 }} />
+              <XAxis dataKey="periodo" tick={{ fontSize: 12 }} interval="preserveStartEnd" />
               {/* Dos ejes Y independientes: vistas_totales está en millones y
                   metrica_secundaria en miles — compartir un solo eje aplastaba
                   la línea contra el piso del gráfico. */}
@@ -305,10 +327,12 @@ export function EvolutivoDetalladoChart() {
                 activeBar={{ fill: BAR_HOVER_COLOR, fillOpacity: BAR_OPACITY }}
                 cursor="pointer"
               >
-                <LabelList
-                  dataKey="vistas_reales"
-                  content={(props: VistasLabelProps) => <VistasLabel {...props} formatValue={formatValue} />}
-                />
+                {mostrarEtiquetas && (
+                  <LabelList
+                    dataKey="vistas_reales"
+                    content={(props: VistasLabelProps) => <VistasLabel {...props} formatValue={formatValue} />}
+                  />
+                )}
                 {chartData.map((punto) => {
                   const isSelected =
                     !!punto.rango &&
@@ -336,10 +360,12 @@ export function EvolutivoDetalladoChart() {
                   fillOpacity={0.55}
                   shape={projectedBarShape}
                 >
-                  <LabelList
-                    dataKey="vistas_proyectadas"
-                    content={(props: VistasLabelProps) => <VistasLabel {...props} formatValue={formatValue} />}
-                  />
+                  {mostrarEtiquetas && (
+                    <LabelList
+                      dataKey="vistas_proyectadas"
+                      content={(props: VistasLabelProps) => <VistasLabel {...props} formatValue={formatValue} />}
+                    />
+                  )}
                 </Bar>
               )}
               {hayProyeccion && (
@@ -364,14 +390,16 @@ export function EvolutivoDetalladoChart() {
                 strokeWidth={2}
                 dot={{ r: 3, fill: LINE_DOT_COLOR, stroke: LINE_DOT_COLOR }}
               >
-                <LabelList
-                  dataKey="metrica_secundaria"
-                  position="top"
-                  offset={12}
-                  formatter={(value: number) => (value == null ? "" : formatValue(value))}
-                  className="text-[10px]"
-                  fill={LINE_COLOR}
-                />
+                {mostrarEtiquetas && (
+                  <LabelList
+                    dataKey="metrica_secundaria"
+                    position="top"
+                    offset={12}
+                    formatter={(value: number) => (value == null ? "" : formatValue(value))}
+                    className="text-[10px]"
+                    fill={LINE_COLOR}
+                  />
+                )}
               </Line>
             </ComposedChart>
           </ResponsiveContainer>

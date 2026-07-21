@@ -1,10 +1,18 @@
 import type { ReactNode } from "react";
 
+import { useContainerWidth } from "@/features/dashboard/hooks/useContainerWidth";
+
 export type KpiAccent = "positivo" | "negativo" | "neutral";
 
 interface KpiCardProps {
   label: string;
   value: string;
+  /** Versión abreviada de `value` (p. ej. "2.4B" en vez de "2,430,146,902")
+   * — si la tarjeta no tiene ancho para mostrar `value` completo sin
+   * partirlo en un punto arbitrario, se usa esta en su lugar. Solo tiene
+   * sentido para KPIs numéricos; se omite en KPIs de porcentaje, que ya son
+   * cortos por naturaleza. */
+  compactValue?: string;
   description?: string;
   accent?: KpiAccent;
   /** Contenido opcional junto al valor grande, misma línea (p. ej. un
@@ -17,6 +25,13 @@ interface KpiCardProps {
    * el mouse. */
   helperText?: string;
 }
+
+// Ancho aproximado en px de un dígito/coma a text-xl font-semibold — no es
+// exacto (no hay canvas.measureText en este componente), pero alcanza para
+// decidir "entra vs. no entra" sin medir cada carácter real.
+const PX_PER_CHAR_ESTIMATE = 11;
+// px-4 del contenedor (16px por lado).
+const CARD_PADDING_PX = 32;
 
 /** Colores de acento opcionales — convención estándar de sentimiento
  * (verde=positivo, rojo=negativo, gris=neutral). Solo lo usan los KPIs de
@@ -39,12 +54,30 @@ const ACCENT_VALUE_CLASS: Record<KpiAccent, string> = {
  * para el contenedor visual compartido). `description` se muestra como
  * tooltip nativo (`title`) — suficiente para una tarjeta simple, sin
  * necesidad de un componente de tooltip propio. */
-export function KpiCard({ label, value, description, accent, trailing, helperText }: KpiCardProps) {
+export function KpiCard({
+  label,
+  value,
+  compactValue,
+  description,
+  accent,
+  trailing,
+  helperText,
+}: KpiCardProps) {
+  const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>();
+  const availableWidth = containerWidth - CARD_PADDING_PX;
+  // Antes de la primera medición (containerWidth === 0) se muestra el valor
+  // completo, mismo criterio que el resto de charts con esta técnica — no
+  // abreviar de más en el primer render.
+  const necesitaAbreviar =
+    !!compactValue && containerWidth > 0 && value.length * PX_PER_CHAR_ESTIMATE > availableWidth;
+  const displayValue = necesitaAbreviar ? compactValue : value;
+
   return (
     <div
+      ref={containerRef}
       className="flex min-w-0 flex-col gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-4 py-3
         dark:border-neutral-800 dark:bg-neutral-950"
-      title={description}
+      title={necesitaAbreviar ? value : description}
     >
       <span
         className={`text-xs font-medium ${
@@ -59,7 +92,7 @@ export function KpiCard({ label, value, description, accent, trailing, helperTex
             accent ? ACCENT_VALUE_CLASS[accent] : "text-neutral-900 dark:text-neutral-100"
           }`}
         >
-          {value}
+          {displayValue}
         </span>
         {trailing}
       </span>

@@ -14,6 +14,7 @@ export function formatPercent(fraction: number | null): string {
  * diferencia de `formatCompactNumber`, que solo agrega separador de miles. */
 export function formatVistasCorto(value: number): string {
   const abs = Math.abs(value);
+  if (abs >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
   if (abs >= 1_000_000) return `${Math.round(value / 1_000_000)}M`;
   if (abs >= 1_000) return `${Math.round(value / 1_000)}k`;
   return String(Math.round(value));

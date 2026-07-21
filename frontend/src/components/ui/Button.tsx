@@ -8,8 +8,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary:
-    "bg-blue-600 text-white hover:bg-blue-700 focus-visible:outline-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600",
+  // Dorado de marca (mismo tono que tabButtonClass/los botones del login),
+  // no el azul default — antes era bg-blue-600, el único botón de la app
+  // fuera de la paleta gold/carbon.
+  primary: "bg-[#b4975a] text-[#0e0c09] hover:bg-[#8a6f3c] focus-visible:outline-[#b4975a]",
   secondary:
     "bg-neutral-100 text-neutral-900 hover:bg-neutral-200 focus-visible:outline-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700",
   danger:

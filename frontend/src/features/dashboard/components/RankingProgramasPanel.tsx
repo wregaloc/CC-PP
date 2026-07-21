@@ -8,6 +8,7 @@ import { ChartTooltip } from "@/features/dashboard/components/ChartTooltip";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { RankingTable } from "@/features/dashboard/components/RankingTable";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
+import { useContainerWidth } from "@/features/dashboard/hooks/useContainerWidth";
 import { useRankingProgramas } from "@/features/dashboard/hooks/useRankingProgramas";
 import { colorForTipo, TIPO_COLOR } from "@/features/dashboard/lib/tipoColors";
 import { formatCompactNumber } from "@/features/dashboard/lib/formatters";
@@ -23,16 +24,25 @@ interface ProgramaTickProps {
   x?: number;
   y?: number;
   payload?: { value: string };
+  /** Máximo de caracteres antes de truncar con "…" — en un eje angosto
+   * (mobile) el nombre completo se corta contra el borde izquierdo del SVG
+   * en vez de superponerse, así que hay que acortarlo a mano. */
+  maxChars?: number;
 }
 
 /** Tick del eje Y con clase Tailwind `dark:` (no un `fill` fijo): el objeto
  * `tick={{ fill: ... }}` de Recharts solo admite un color hardcodeado, que
  * se veía bien sobre el fondo oscuro pero quedaba ilegible en tema claro. */
-function ProgramaTick({ x, y, payload }: ProgramaTickProps) {
+function ProgramaTick({ x, y, payload, maxChars }: ProgramaTickProps) {
   if (x === undefined || y === undefined || !payload) return null;
+  const label =
+    maxChars && payload.value.length > maxChars
+      ? `${payload.value.slice(0, maxChars - 1)}…`
+      : payload.value;
   return (
     <text x={x} y={y} dy={4} textAnchor="end" fontSize={12} className="fill-neutral-700 dark:fill-neutral-200">
-      {payload.value}
+      <title>{payload.value}</title>
+      {label}
     </text>
   );
 }
@@ -73,6 +83,11 @@ export function RankingProgramasPanel({ className }: { className?: string }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [view, setView] = useState<ViewMode>("grafico");
+  const [chartRef, chartWidth] = useContainerWidth<HTMLDivElement>();
+  // Antes de la primera medición se asume el ancho completo (140px), igual
+  // criterio que el resto de charts del dashboard con esta misma técnica.
+  const yAxisWidth = chartWidth > 0 && chartWidth < 420 ? 90 : 140;
+  const yAxisMaxChars = Math.max(6, Math.floor(yAxisWidth / 6.5));
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
@@ -208,7 +223,7 @@ export function RankingProgramasPanel({ className }: { className?: string }) {
         loadingFallback={<Skeleton className="h-80 w-full" />}
       >
         {view === "grafico" ? (
-          <div className="h-80 w-full">
+          <div ref={chartRef} className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
@@ -220,8 +235,8 @@ export function RankingProgramasPanel({ className }: { className?: string }) {
                 <YAxis
                   type="category"
                   dataKey="programa"
-                  width={140}
-                  tick={<ProgramaTick />}
+                  width={yAxisWidth}
+                  tick={<ProgramaTick maxChars={yAxisMaxChars} />}
                   interval={0}
                 />
                 <Tooltip content={<ChartTooltip valueFormatter={formatCompactNumber} />} />

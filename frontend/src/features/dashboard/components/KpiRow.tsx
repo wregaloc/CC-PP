@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { QueryState } from "@/components/ui/QueryState";
 import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { KpiCard } from "@/features/dashboard/components/KpiCard";
-import { formatCompactNumber, formatPercent } from "@/features/dashboard/lib/formatters";
+import { formatCompactNumber, formatPercent, formatVistasCorto } from "@/features/dashboard/lib/formatters";
 import { useDashboardFilters } from "@/features/dashboard/context/DashboardFiltersContext";
 import { useKpis } from "@/features/dashboard/hooks/useKpis";
 import type { KpisResponse } from "@/features/dashboard/types";
@@ -45,6 +45,7 @@ export function KpiRow() {
             <KpiCard
               label="Vistas Totales"
               value={formatCompactNumber(query.data.vistas_totales)}
+              compactValue={formatVistasCorto(query.data.vistas_totales)}
               description="DATA[Vistas Totales]"
             />
             <KpiCard
@@ -55,16 +56,19 @@ export function KpiRow() {
             <KpiCard
               label="Likes"
               value={formatCompactNumber(query.data.likes)}
+              compactValue={formatVistasCorto(query.data.likes)}
               description="SUM(DATA[Likes])"
             />
             <KpiCard
               label="Comentarios"
               value={formatCompactNumber(query.data.comentarios)}
+              compactValue={formatVistasCorto(query.data.comentarios)}
               description="SUM(DATA[Comentarios])"
             />
             <KpiCard
               label="Emisiones"
               value={formatCompactNumber(query.data.emisiones)}
+              compactValue={formatVistasCorto(query.data.emisiones)}
               description="SUM(DATA[Es_Emision]) — conteo de emisiones, no un flag sí/no"
             />
             <KpiCard
@@ -74,6 +78,9 @@ export function KpiRow() {
                   ? formatCompactNumber(query.data.pico_max_vivo)
                   : "—"
               }
+              compactValue={
+                query.data.pico_max_vivo !== null ? formatVistasCorto(query.data.pico_max_vivo) : undefined
+              }
               description="MAX(DATA[Pico Max])"
             />
             <KpiCard
@@ -82,6 +89,9 @@ export function KpiRow() {
                 query.data.promedio_vivo !== null
                   ? formatCompactNumber(query.data.promedio_vivo)
                   : "—"
+              }
+              compactValue={
+                query.data.promedio_vivo !== null ? formatVistasCorto(query.data.promedio_vivo) : undefined
               }
               description="AVG(DATA[Promedio en Vivo])"
             />
@@ -113,6 +123,7 @@ function PromedioVistasCard({
     <KpiCard
       label="Promedio de Vistas"
       value={promedio !== null ? formatCompactNumber(Math.round(promedio)) : "—"}
+      compactValue={promedio !== null ? formatVistasCorto(Math.round(promedio)) : undefined}
       description={
         porPrograma
           ? "Vistas Totales ÷ cantidad de programas distintos en el filtro actual"
