@@ -144,12 +144,22 @@ function BarWithTopBorder({ x, y, width, height, fill, fillOpacity, stroke, stro
   );
 }
 
+/** Wrapper con la firma que el prop `shape` de Recharts espera
+ * (`(props: unknown) => Element`, ver @types/recharts) — castea una única
+ * vez a `BarShapeProps` y delega en el componente tipado de arriba, que se
+ * sigue pudiendo usar como JSX normal en el resto del archivo. */
+function barShape(shapeProps: unknown) {
+  return <BarWithTopBorder {...(shapeProps as BarShapeProps)} />;
+}
+
 /** Barra de proyección: mismo componente que las barras reales
  * (`BarWithTopBorder`), pero con contorno sólido azul en vez del filo
  * dorado sutil — reutiliza la rama `stroke` ya existente para que la
  * geometría (esquinas redondeadas) sea idéntica y solo cambie el color. */
-function projectedBarShape(props: BarShapeProps) {
-  return <BarWithTopBorder {...props} stroke={FORECAST_COLOR} strokeWidth={1.5} />;
+function projectedBarShape(shapeProps: unknown) {
+  return (
+    <BarWithTopBorder {...(shapeProps as BarShapeProps)} stroke={FORECAST_COLOR} strokeWidth={1.5} />
+  );
 }
 
 /**
@@ -323,7 +333,7 @@ export function EvolutivoDetalladoChart() {
                 stackId="vistas"
                 fill={BAR_COLOR}
                 fillOpacity={BAR_OPACITY}
-                shape={BarWithTopBorder}
+                shape={barShape}
                 activeBar={{ fill: BAR_HOVER_COLOR, fillOpacity: BAR_OPACITY }}
                 cursor="pointer"
               >

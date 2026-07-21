@@ -7,7 +7,6 @@ import {
   listClients,
   toggleClientActive,
   updateClient,
-  uploadClientLogo,
 } from "@/features/admin/api/adminClientsApi";
 
 const CLIENTS_KEY = "admin-clients";
@@ -64,14 +63,5 @@ export function useClientUsers(clientId: string) {
   return useQuery({
     queryKey: [CLIENTS_KEY, "users", clientId],
     queryFn: () => getClientUsers(clientId),
-  });
-}
-
-export function useUploadClientLogo() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ clientId, file }: { clientId: string; file: File }) =>
-      uploadClientLogo(clientId, file),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [CLIENTS_KEY] }),
   });
 }

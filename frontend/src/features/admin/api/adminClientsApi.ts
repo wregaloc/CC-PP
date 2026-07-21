@@ -33,20 +33,6 @@ export async function toggleClientActive(clientId: string): Promise<ClientOut> {
   return response.data;
 }
 
-export async function uploadClientLogo(clientId: string, file: File): Promise<ClientOut> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const response = await httpClient.post<ClientOut>(`/admin/clients/${clientId}/logo`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return response.data;
-}
-
-/** URL pública (sin auth) del logo — ver backend/app/api/v1/endpoints/admin_clients.py. */
-export function getClientLogoUrl(clientId: string): string {
-  return `${httpClient.defaults.baseURL}/admin/clients/${clientId}/logo`;
-}
-
 export async function getClientUsers(clientId: string): Promise<PaginatedUsers> {
   const response = await httpClient.get<PaginatedUsers>(`/admin/clients/${clientId}/users`, {
     params: { page_size: 200 },

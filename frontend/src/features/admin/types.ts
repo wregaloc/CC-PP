@@ -114,7 +114,6 @@ export interface ListAdminUsersParams {
 export interface ClientOut {
   id: string;
   name: string;
-  logo_path: string | null;
   is_active: boolean;
   user_count: number;
   created_at: string;

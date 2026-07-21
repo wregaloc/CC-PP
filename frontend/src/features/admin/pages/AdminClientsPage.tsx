@@ -6,7 +6,6 @@ import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { TextField } from "@/components/ui/TextField";
 import { AdminCard } from "@/features/admin/components/AdminCard";
-import { getClientLogoUrl } from "@/features/admin/api/adminClientsApi";
 import { ClientFormModal } from "@/features/admin/components/ClientFormModal";
 import { DataTable, type DataTableColumn } from "@/features/admin/components/DataTable";
 import { PaginationControls } from "@/features/admin/components/PaginationControls";
@@ -28,20 +27,6 @@ export function AdminClientsPage() {
   const toggleActive = useToggleClientActive();
 
   const columns: DataTableColumn<ClientOut>[] = [
-    {
-      key: "logo",
-      header: "",
-      render: (row) =>
-        row.logo_path ? (
-          <img
-            src={getClientLogoUrl(row.id)}
-            alt=""
-            className="h-8 w-8 rounded object-contain"
-          />
-        ) : (
-          <div className="h-8 w-8 rounded bg-neutral-100 dark:bg-neutral-800" />
-        ),
-    },
     {
       key: "name",
       header: "Nombre",

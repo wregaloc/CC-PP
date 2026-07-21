@@ -14,6 +14,8 @@ passlib[bcrypt]>=1.7,<2.0
 # la última versión compatible conocida.
 bcrypt==4.0.1
 python-dotenv>=1.0,<2.0
+# Cliente HTTP async — usado por el Asistente de IA para llamar a la API de Gemini.
+httpx>=0.27,<1.0
 
 # ETL (lectura de CSV/Excel)
 pandas>=2.2,<3.0
@@ -22,7 +24,6 @@ openpyxl>=3.1,<4.0
 # Testing
 pytest>=8.3,<9.0
 pytest-asyncio>=0.24,<1.0
-httpx>=0.27,<1.0
 
 # Lint / format
 ruff>=0.6,<1.0

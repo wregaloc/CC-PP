@@ -189,7 +189,7 @@ Toda acción administrativa (`USER_CREATE`, `USER_UPDATE`, `USER_ACTIVATE`, `USE
 
 ## 3.5. Administración de Clientes (`/api/v1/admin/clients`) — Fase 10 §Módulo 3
 
-Rol requerido: **admin** en todos, salvo el `GET .../logo` (público, ver abajo). Un "cliente" es una empresa — puramente administrativo, agrupa usuarios rol `cliente` para gestión: **no filtra los datos que ve el dashboard principal** (todos los roles siguen viendo la misma información, ver constitución del proyecto).
+Rol requerido: **admin** en todos. Un "cliente" es una empresa — puramente administrativo, agrupa usuarios rol `cliente` para gestión: **no filtra los datos que ve el dashboard principal** (todos los roles siguen viendo la misma información, ver constitución del proyecto).
 
 | Endpoint | Descripción |
 |---|---|
@@ -198,15 +198,13 @@ Rol requerido: **admin** en todos, salvo el `GET .../logo` (público, ver abajo)
 | `GET /admin/clients/{id}` | `404 RESOURCE_NOT_FOUND` si no existe. |
 | `PUT /admin/clients/{id}` | `{ "name": "Nuevo Nombre" }` |
 | `PATCH /admin/clients/{id}/toggle-active` | Alterna `is_active` — mismo criterio que usuarios (sin borrado físico). |
-| `POST /admin/clients/{id}/logo` | `multipart/form-data`, campo `file`. Acepta PNG/JPEG/WEBP hasta 2 MB, validado por **firma binaria real** (no por extensión declarada, ver `app/services/client_service.py::_detect_extension`). `413` si supera 2 MB, `422 VALIDATION_ERROR` si el contenido no es una imagen válida. |
-| `GET /admin/clients/{id}/logo` | Sirve el archivo del logo directamente. **Sin autenticación**: un logo de empresa no es información sensible y el id es un UUID no adivinable — permite usarlo tal cual en un `<img src>` sin resolver fetch-with-auth en el frontend. `404` si el cliente no existe o no tiene logo cargado. |
 | `GET /admin/clients/{id}/users` | Usuarios (rol `cliente`) con `client_id` igual a este cliente — mismo formato que `GET /admin/users`. |
 
 Asignar/quitar un usuario de un cliente se hace desde `PUT /admin/users/{id}` (campo `client_id`), no hay un endpoint separado para la dirección inversa.
 
-`CLIENT_LOGO_STORAGE_DIR` (`.env`, por defecto `backend/storage/client_logos/`): a diferencia de `UPLOAD_STORAGE_DIR`, estos archivos **se conservan** (no son un insumo transitorio de un ETL).
+Acciones auditadas: `CLIENT_CREATE`, `CLIENT_UPDATE`, `CLIENT_ACTIVATE`, `CLIENT_DEACTIVATE`.
 
-Acciones auditadas: `CLIENT_CREATE`, `CLIENT_UPDATE`, `CLIENT_ACTIVATE`, `CLIENT_DEACTIVATE`, `CLIENT_LOGO_UPDATE`.
+> Nota: el Módulo 3 tuvo en algún momento (Fase 10–12.2) una feature de logo de empresa (`POST/GET /admin/clients/{id}/logo`). Se descartó antes de llegar a producción — nunca se usó en la práctica y no valía la pena resolver su almacenamiento persistente para algo sin uso real. Si se reintroduce en el futuro, evaluar Supabase Storage desde el inicio (el filesystem de Cloud Run es efímero).
 
 ## 3.6. Dashboard del Sistema (`/api/v1/admin/system`) — Fase 10 §Módulo 1
 

@@ -1,10 +1,18 @@
-import { useId, useState, type FormEvent } from "react";
+import { lazy, Suspense, useId, useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { PodPulseLogo } from "@/components/layout/PodPulseLogo";
-import { GemBackground } from "@/features/auth/components/GemBackground";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { ApiError } from "@/lib/apiError";
+
+// Carga perezosa: three.js (~600 kB) es puramente decorativo — no debe
+// bloquear el primer render del formulario de login, que es la ruta de
+// entrada de toda la app (ver [[react-enterprise-frontend]] — lazy en
+// dependencias pesadas). Sin fallback visual propio: el gradiente de fondo
+// ya está presente debajo, así que no hay salto de layout mientras carga.
+const GemBackground = lazy(() =>
+  import("@/features/auth/components/GemBackground").then((m) => ({ default: m.GemBackground })),
+);
 
 interface LocationState {
   from?: string;
@@ -63,7 +71,9 @@ export function LoginPage() {
         }}
       />
 
-      <GemBackground />
+      <Suspense fallback={null}>
+        <GemBackground />
+      </Suspense>
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl justify-end">
         <div

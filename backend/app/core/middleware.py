@@ -44,3 +44,29 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             extra={"request_id": request_id},
         )
         return response
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Cabeceras de defensa en profundidad (ver [[enterprise-security]] — OWASP).
+
+    HTTPS en sí lo termina la plataforma (Cloud Run/Vercel), no esta app —
+    acá solo se agregan las cabeceras que si dependen del código: HSTS para
+    forzar HTTPS en visitas futuras, y las de anti-sniffing/clickjacking que
+    no tienen downside para una API JSON pura (sin vistas HTML propias).
+    """
+
+    def __init__(self, app: object, hsts_enabled: bool) -> None:
+        super().__init__(app)  # type: ignore[arg-type]
+        self._hsts_enabled = hsts_enabled
+
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if self._hsts_enabled:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response

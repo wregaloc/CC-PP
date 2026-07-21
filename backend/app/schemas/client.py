@@ -17,7 +17,6 @@ class ClientUpdate(BaseModel):
 class ClientOut(BaseModel):
     id: uuid.UUID
     name: str
-    logo_path: str | None
     is_active: bool
     user_count: int
     created_at: datetime
@@ -28,7 +27,6 @@ class ClientOut(BaseModel):
         return cls(
             id=client.id,
             name=client.name,
-            logo_path=client.logo_path,
             is_active=client.is_active,
             user_count=user_count,
             created_at=client.created_at,

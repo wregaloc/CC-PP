@@ -33,11 +33,6 @@ async def set_active(session: AsyncSession, client: Client, *, is_active: bool) 
     return client
 
 
-async def set_logo_path(session: AsyncSession, client: Client, *, logo_path: str) -> Client:
-    client.logo_path = logo_path
-    return client
-
-
 async def count_users(session: AsyncSession, client_id: uuid.UUID) -> int:
     result = await session.execute(
         select(func.count()).select_from(User).where(User.client_id == client_id)

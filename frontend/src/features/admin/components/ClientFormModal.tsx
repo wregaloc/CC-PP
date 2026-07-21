@@ -14,8 +14,7 @@ interface ClientFormModalProps {
   onClose: () => void;
 }
 
-/** Formulario de alta/edición de una empresa cliente (Módulo 3). El logo se
- * carga aparte (ver ClientLogoUploader), solo aplica una vez que el cliente existe. */
+/** Formulario de alta/edición de una empresa cliente (Módulo 3). */
 export function ClientFormModal({ client, onClose }: ClientFormModalProps) {
   const isEditing = client !== undefined;
   const [name, setName] = useState(client?.name ?? "");

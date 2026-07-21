@@ -10,11 +10,6 @@ pytestmark = pytest.mark.usefixtures("db_session")
 
 CLIENTS_URL = "/api/v1/admin/clients"
 
-# Firma PNG real (los 8 bytes que app/services/client_service.py::_detect_extension
-# reconoce) — no hace falta un PNG válido completo, solo la firma binaria.
-_PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
-_TEXT_BYTES = b"esto no es una imagen"
-
 
 async def _login(client: httpx.AsyncClient, email: str, password: str) -> str:
     response = await client.post(
@@ -132,7 +127,6 @@ async def test_create_and_get_client(
     assert body["name"] == "TEST_CLIENTE_ACME"
     assert body["is_active"] is True
     assert body["user_count"] == 0
-    assert body["logo_path"] is None
 
     get_response = await client.get(f"{CLIENTS_URL}/{body['id']}", headers=_auth(token))
     assert get_response.status_code == 200
@@ -181,44 +175,6 @@ async def test_toggle_client_active(
     reactivated = await client.patch(f"{CLIENTS_URL}/{client_id}/toggle-active", headers=_auth(token))
     assert reactivated.status_code == 200
     assert reactivated.json()["is_active"] is True
-
-
-async def test_upload_logo_success_and_serves_it_back(
-    client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
-) -> None:
-    token = await _make_admin_token(client, make_user, "admin-clients-logo@podpulse.pe")
-    created = await client.post(CLIENTS_URL, headers=_auth(token), json={"name": "TEST_LOGO"})
-    client_id = created.json()["id"]
-
-    upload_response = await client.post(
-        f"{CLIENTS_URL}/{client_id}/logo",
-        headers=_auth(token),
-        files={"file": ("logo.png", _PNG_BYTES, "image/png")},
-    )
-    assert upload_response.status_code == 200
-    assert upload_response.json()["logo_path"] is not None
-
-    # GET del logo es público (sin Authorization) — ver admin_clients.py.
-    logo_response = await client.get(f"{CLIENTS_URL}/{client_id}/logo")
-    assert logo_response.status_code == 200
-    assert logo_response.content == _PNG_BYTES
-
-
-async def test_upload_logo_rejects_non_image_content(
-    client: httpx.AsyncClient, make_user: Callable[..., Awaitable[User]]
-) -> None:
-    token = await _make_admin_token(client, make_user, "admin-clients-badlogo@podpulse.pe")
-    created = await client.post(CLIENTS_URL, headers=_auth(token), json={"name": "TEST_BADLOGO"})
-    client_id = created.json()["id"]
-
-    response = await client.post(
-        f"{CLIENTS_URL}/{client_id}/logo",
-        headers=_auth(token),
-        files={"file": ("fake.png", _TEXT_BYTES, "image/png")},
-    )
-
-    assert response.status_code == 422
-    assert response.json()["code"] == "VALIDATION_ERROR"
 
 
 async def test_create_client_with_empty_name_returns_readable_error(

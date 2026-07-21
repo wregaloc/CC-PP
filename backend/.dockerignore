@@ -1,0 +1,27 @@
+# Ver Dockerfile — todo lo que no hace falta para correr la app en runtime.
+
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+tests/
+scripts/
+
+# Nunca debe llegar a la imagen — secretos de desarrollo local (ver
+# [[local-development-environment]]). En Cloud Run la configuración se
+# inyecta como variables de entorno del servicio, no como archivo .env.
+.env
+.env.*
+!.env.example
+
+# Archivos subidos/logos de desarrollo local — no son parte de la imagen.
+storage/
+
+.git/
+.gitignore
+*.md

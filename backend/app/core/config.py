@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,11 +42,6 @@ class Settings(BaseSettings):
     # El archivo se borra tras procesarse; el dato ya vive en Postgres.
     upload_storage_dir: str = "storage/uploads"
 
-    # Logos de cliente (Fase 10 §Módulo 3) — a diferencia de upload_storage_dir,
-    # estos archivos SÍ se conservan (se sirven de vuelta vía GET, no son un
-    # insumo transitorio de un ETL).
-    client_logo_storage_dir: str = "storage/client_logos"
-
     # Se declara como str plano (no list[str]): pydantic-settings intenta decodificar
     # los tipos complejos como JSON antes de validarlos, lo que rompe con un valor
     # separado por comas como "http://a,http://b". Se expone como lista mediante
@@ -67,6 +62,38 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins_raw.split(",") if origin.strip()]
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
+
+    @model_validator(mode="after")
+    def _validar_produccion_fail_closed(self) -> "Settings":
+        """Fail closed (ver [[enterprise-security]]): un despliegue marcado
+        ENVIRONMENT=production con una config insegura no debe arrancar en
+        silencio — mejor que el proceso no levante a que sirva tráfico real
+        con debug/cookies inseguras/CORS abierto de par en par."""
+        if not self.is_production:
+            return self
+
+        errores: list[str] = []
+        if self.debug:
+            errores.append("DEBUG debe ser false en producción (nunca exponer tracebacks/echo SQL)")
+        if not self.cookie_secure:
+            errores.append("COOKIE_SECURE debe ser true en producción (HTTPS obligatorio)")
+        if not self.database_ssl_required:
+            errores.append("DATABASE_SSL_REQUIRED debe ser true en producción")
+        if not self.cors_origins:
+            errores.append("CORS_ORIGINS no puede estar vacío en producción")
+        if "*" in self.cors_origins:
+            errores.append("CORS_ORIGINS no puede incluir '*' en producción")
+        if len(self.jwt_secret_key) < 32:
+            errores.append("JWT_SECRET_KEY debe tener al menos 32 caracteres en producción")
+
+        if errores:
+            detalle = "; ".join(errores)
+            raise ValueError(f"Configuración insegura para producción: {detalle}")
+        return self
 
 
 @lru_cache

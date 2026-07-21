@@ -1,10 +1,8 @@
 import uuid
 
-from fastapi import APIRouter, Depends, File, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import Settings, get_settings
 from app.dependencies.auth import require_admin
 from app.dependencies.db import get_db
 from app.dependencies.pagination import PaginationParams, pagination_params
@@ -102,45 +100,6 @@ async def toggle_client_active(
     session: AsyncSession = Depends(get_db),
 ) -> ClientOut:
     return await client_service.toggle_active(session, admin, client_id)
-
-
-@router.post(
-    "/{client_id}/logo",
-    response_model=ClientOut,
-    summary="Subir logo del cliente",
-    description="Acepta PNG/JPEG/WEBP hasta 2 MB, validado por firma binaria real "
-    "(no por extensión). Rol requerido: admin.",
-    responses={
-        **_RBAC_RESPONSES,
-        **_NOT_FOUND_RESPONSE,
-        413: {"description": "El logo supera 2 MB"},
-        422: {"description": "El archivo no es una imagen PNG/JPEG/WEBP válida"},
-    },
-)
-async def upload_client_logo(
-    client_id: uuid.UUID,
-    file: UploadFile = File(...),
-    admin: User = Depends(require_admin),
-    session: AsyncSession = Depends(get_db),
-    settings: Settings = Depends(get_settings),
-) -> ClientOut:
-    return await client_service.set_logo(session, settings, admin, client_id, file)
-
-
-@router.get(
-    "/{client_id}/logo",
-    summary="Logo del cliente",
-    description="Sirve el archivo del logo directamente — sin autenticación, ya que un logo de "
-    "empresa no es información sensible y el id es un UUID no adivinable (permite usarlo "
-    "directamente en un <img src>). Rol requerido: público.",
-    responses={404: {"description": "El cliente no existe o no tiene logo cargado"}},
-)
-async def get_client_logo(
-    client_id: uuid.UUID,
-    session: AsyncSession = Depends(get_db),
-) -> FileResponse:
-    logo_path = await client_service.get_logo_path(session, client_id)
-    return FileResponse(logo_path)
 
 
 @router.get(
